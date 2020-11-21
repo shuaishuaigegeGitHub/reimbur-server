@@ -30,7 +30,7 @@ yarn start
 
 ## 开发介绍
 
-启动文件为 `app/index.js` 文件：
+启动文件为 `src/index.js` 文件：
 
 ```javascript
 require("dotenv/config"); // 加载 .env 配置文件
@@ -42,7 +42,7 @@ require("babel-register");
 require("./app");
 ```
 
-在 `app/app.js` 中就创建了 `Application` 实例，`Application.js` 是最主要的启动文件，这里主要做了：
+在 `src/app.js` 中就创建了 `Application` 实例，`Application.js` 是最主要的启动文件，这里主要做了：
 
 -   创建 Koa 实例
 -   koa-router 的自动加载
@@ -59,5 +59,5 @@ require("./app");
 
 ### 提交检查
 
-每次在 `git commit '提交信息'` 之前都会进行 `eslint app --fix` 进行检查，修复
+每次在 `git commit '提交信息'` 之前都会进行 `eslint src --fix` 进行检查，修复
 如果没通过 eslint 检测，则无法进行提交。
