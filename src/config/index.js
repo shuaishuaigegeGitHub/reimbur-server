@@ -35,18 +35,11 @@ export default {
     },
     db: {
         // 是否同步数据库的model
-        sync: true,
+        sync: false,
         // 是否覆盖原model
         override: false,
         // 要同步的表，有这个属性，优先使用这个同步
-        tableName: [
-            "cbc_bank_bill",
-            "cbc_bank_bill_detail",
-            "cbc_bank_settle",
-            "workflow_instance",
-            "workflow_task",
-            "workflow",
-        ],
+        tableName: [],
         // 要同步的数据库，如果没有tableName，在使用这个schema
         schema: process.env.DB_DATABASE,
     },
