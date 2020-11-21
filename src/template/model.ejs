@@ -1,0 +1,21 @@
+import Sequelize from  "sequelize";
+
+export default (sequelize) => {
+    let <%= tableName %> = sequelize.define(
+        "<%= tableName %>",
+        {<% columns.forEach(item => { %>
+            <%= item.name %>: {
+                type: Sequelize.<%= item.type %>,
+                comment: "<%= item.comment %>",
+                <% if (item.primary) { %>primaryKey: true, <% } %>
+                <% if (item.autoIncrement) { %>autoIncrement: true, <% } %>
+            },<% }); %>
+        },
+        {
+            tableName: "<%= tableName %>",
+            createdAt: "createtime",
+            updatedAt: "updatetime",
+        }
+    );
+    return <%= tableName %>;
+};

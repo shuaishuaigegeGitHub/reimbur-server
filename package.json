@@ -1,0 +1,59 @@
+{
+    "name": "reimbur",
+    "version": "1.0.0",
+    "description": "报销系统后端",
+    "main": "index.js",
+    "repository": "git@git.feigo.fun:lianjianwei/app-config-server.git",
+    "author": "ljw <lianjianwei@fenglinghudong.com>",
+    "license": "MIT",
+    "scripts": {
+        "dev": "nodemon -w ./src src/index.js",
+        "start": "pm2 start ./src/index.js --name 'app-config-server'",
+        "model": "node src/index.js",
+        "lint": "eslint src",
+        "fix": "eslint src --fix"
+    },
+    "dependencies": {
+        "@koa/cors": "^3.1.0",
+        "axios": "^0.21.0",
+        "cnchar": "^2.2.7",
+        "dayjs": "^1.9.3",
+        "dotenv": "^8.2.0",
+        "ejs": "^3.1.5",
+        "ioredis": "^4.19.0",
+        "jsonwebtoken": "^8.5.1",
+        "koa": "^2.13.0",
+        "koa-body": "^4.2.0",
+        "koa-router": "^9.4.0",
+        "log4js": "^6.3.0",
+        "merge": "^1.2.1",
+        "module-alias": "^2.2.2",
+        "mysql2": "^2.1.0",
+        "qiniu": "^7.3.2",
+        "require-directory": "^2.1.1",
+        "sequelize": "^6.3.4",
+        "string-kit": "^0.11.8",
+        "ua-parser-js": "^0.7.22",
+        "uuid": "^8.3.1"
+    },
+    "devDependencies": {
+        "babel": "^6.23.0",
+        "babel-cli": "^6.26.0",
+        "babel-eslint": "^8.0.3",
+        "babel-plugin-component": "^0.10.1",
+        "babel-plugin-transform-runtime": "^6.23.0",
+        "babel-preset-es2015": "^6.24.1",
+        "babel-preset-stage-2": "^6.24.1",
+        "eslint": "^7.7.0",
+        "husky": "^4.2.5",
+        "nodemon": "^2.0.4"
+    },
+    "_moduleAliases": {
+        "@": "./src"
+    },
+    "husky": {
+        "hooks": {
+            "pre-commit": "eslint --fix"
+        }
+    }
+}
