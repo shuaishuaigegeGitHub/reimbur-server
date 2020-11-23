@@ -524,7 +524,7 @@ export const transfer = async (params) => {
         if (!res) {
             throw new Error("更新任务信息失败");
         }
-        // TODO: 支付操作需要对接到财务系统
+        // 支付操作需要对接到财务系统
         res = await SystemService.transaction({
             // 打款账户（用户打钱的银行账户ID）
             payId: 1,
@@ -535,12 +535,19 @@ export const transfer = async (params) => {
             // 转账金额
             money: trsamt,
             // 摘要
-            summary: "",
+            summary: "报销款",
+            // 收方银行
+            bankName: data.flow_params.bank_name,
+            // 收方开户行地址
+            bankAddress: data.flow_params.bank_address,
         });
         global.logger.info("财务转账返回数据：%J", res);
+        if (res.code != 1000) {
+            throw new Error(res.msg);
+        }
 
         // 业务参考号
-        let refext = res.orderId;
+        let refext = res.data.orderId;
         const now = dayjs().unix();
         res = await models.workflow_instance.update(
             {
