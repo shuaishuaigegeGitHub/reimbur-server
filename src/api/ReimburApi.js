@@ -1,5 +1,6 @@
 import Router from "koa-router";
 import * as ReimburService from "@/service/ReimburService";
+import * as SystemService from "@/service/SystemService";
 
 const router = new Router({
     prefix: "/reimbur",
@@ -115,6 +116,14 @@ router.post("/transfer", async (ctx) => {
     params.user_name = ctx.state.userName;
     await ReimburService.transfer(params);
     ctx.renderJson({ msg: "转账成功" });
+});
+
+/**
+ * 获取科目树
+ */
+router.get("/subject-tree", async (ctx) => {
+    const data = await SystemService.getSubjectTree(ctx.token);
+    ctx.renderJson({ msg: "查询成功", data });
 });
 
 export default router;

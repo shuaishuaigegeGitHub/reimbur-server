@@ -63,7 +63,7 @@ export const deSign = (signStr) => {
  * 加密字符串
  * @param {string} str 要加密的字符串内容
  */
-async function aesEncrypt(str) {
+function aesEncrypt(str) {
     return cryptojs.AES.encrypt(str, cryptojs.enc.Utf8.parse(AES_ENCRYPT_KEY), {
         mode: cryptojs.mode.ECB,
         padding: cryptojs.pad.Pkcs7,
@@ -74,7 +74,7 @@ async function aesEncrypt(str) {
  * AES解密
  * @param {string} str 要解密的base64字符串
  */
-async function aesDecrypt(str) {
+function aesDecrypt(str) {
     let decryptData = cryptojs.AES.decrypt(str, cryptojs.enc.Utf8.parse(AES_ENCRYPT_KEY), {
         mode: cryptojs.mode.ECB,
         padding: cryptojs.pad.Pkcs7,

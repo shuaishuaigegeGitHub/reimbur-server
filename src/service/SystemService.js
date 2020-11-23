@@ -48,3 +48,17 @@ export const transaction = async (params) => {
     });
     return res;
 };
+
+/**
+ * 获取科目树
+ * @param {*} token
+ */
+export const getSubjectTree = async (token) => {
+    let res = await axios({
+        url: FINANCIAL_BASE_URL + "/api/subject/tree",
+        headers: {
+            token: token,
+        },
+    });
+    return res.data;
+};

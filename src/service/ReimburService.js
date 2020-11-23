@@ -477,11 +477,6 @@ export const rejectBaoXiaoProcess = async (params) => {
 };
 
 /**
- * 公转私，金额最高限制，超过限制需要填写对应的用途。
- */
-const PRIVATE_MONEY_LIMIT = 50000;
-
-/**
  * 银行转账
  * @param {object} params
  */
@@ -509,50 +504,62 @@ export const transfer = async (params) => {
     // 支付金额
     let trsamt = Number(data.flow_params.total_money).toFixed(2);
 
-    // TODO: 支付操作需要对接到财务系统
-    const res = await SystemService.transaction({
-        // 打款账户（用户打钱的银行账户ID）
-        payId: 1,
-        // 收方银行卡号
-        toAccount: data.flow_params.bank_account,
-        // 收方户名
-        toName: data.flow_params.payee,
-        // 转账金额
-        money: trsamt,
-        // 摘要
-        summary: "",
-    });
-    global.logger.info("财务转账返回数据：%J", res);
+    const transaction = await models.sequelize.transaction();
 
-    // 业务参考号
-    let refext = res.orderId;
-    const now = dayjs().unix();
-    await models.workflow_instance.update(
-        {
-            refext: refext,
-            updatetime: now,
-            update_by: params.user_name,
-        },
-        {
-            where: {
-                id: data.wi_id,
+    try {
+        let res = await models.workflow_task.update(
+            {
+                params: JSON.stringify({
+                    remark: params.remark,
+                    operator: params.user_name,
+                }),
+                updatetime: now,
             },
+            {
+                where: {
+                    id: params.id,
+                },
+            }
+        );
+        if (!res) {
+            throw new Error("更新任务信息失败");
         }
-    );
-    await models.workflow_task.update(
-        {
-            params: JSON.stringify({
-                remark: params.remark,
-                operator: params.user_name,
-            }),
-            updatetime: now,
-        },
-        {
-            where: {
-                id: params.id,
+        // TODO: 支付操作需要对接到财务系统
+        res = await SystemService.transaction({
+            // 打款账户（用户打钱的银行账户ID）
+            payId: 1,
+            // 收方银行卡号
+            toAccount: data.flow_params.bank_account,
+            // 收方户名
+            toName: data.flow_params.payee,
+            // 转账金额
+            money: trsamt,
+            // 摘要
+            summary: "",
+        });
+        global.logger.info("财务转账返回数据：%J", res);
+
+        // 业务参考号
+        let refext = res.orderId;
+        const now = dayjs().unix();
+        res = await models.workflow_instance.update(
+            {
+                refext: refext,
+                updatetime: now,
+                update_by: params.user_name,
             },
-        }
-    );
+            {
+                where: {
+                    id: data.wi_id,
+                },
+            }
+        );
+
+        await transaction.commit();
+    } catch (error) {
+        await transaction.rollback();
+        throw new GlobalError(501, "转账失败：" + error.message);
+    }
 };
 
 /**
