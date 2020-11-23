@@ -133,6 +133,7 @@ export const queryMyBaoXiao = async (params = {}) => {
         where,
         limit: limit,
         offset: offset,
+        order: [["updatetime", "DESC"]],
         raw: true,
     });
 
@@ -184,6 +185,8 @@ export const queryMyShenpi = async (params) => {
         replacements.push(start);
         replacements.push(end);
     }
+
+    sql += " ORDER BY t2.createtime DESC ";
 
     let page = params.page || 1;
     let size = params.size || 10;

@@ -10,7 +10,7 @@ export default () => {
         } catch (err) {
             ctx.logger.error("%S", err.stack);
             ctx.renderJson({
-                errcode: err.errcode || err.status || SERVER_ERROR_CODE,
+                code: err.errcode || err.status || SERVER_ERROR_CODE,
                 msg: err.message || "服务器内部错误",
             });
         }

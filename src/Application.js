@@ -54,7 +54,7 @@ export default class Application {
     appendContextFunctionOrProperty() {
         this.koa.context.renderJson = function (params = {}) {
             this.body = {
-                errcode: params.errcode || 0,
+                code: params.code || 1000,
                 msg: params.msg || "操作成功",
                 data: params.data,
             };
