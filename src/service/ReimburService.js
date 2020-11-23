@@ -212,7 +212,7 @@ export const queryMyShenpiCount = async (params) => {
         where: {
             actor_user_id: params.id,
             status: WORKFLOW_TASK_STATUS_START,
-            params: null,
+            params: "",
         },
     });
     return count;
@@ -490,8 +490,8 @@ export const transfer = async (params) => {
         LEFT JOIN workflow_instance t2 ON t1.wi_id = t2.id
         WHERE t1.id = ? AND t1.status = ? AND actor_user_id = ?
     `;
-    let data = await models.sequelize.query(sql, {
-        type: models.sequelize.QueryTypes.SELECT,
+    let data = await sequelize.query(sql, {
+        type: sequelize.QueryTypes.SELECT,
         replacements: [params.id, WORKFLOW_INSTANCE_STATUS_START, params.user_id],
         plain: true,
     });

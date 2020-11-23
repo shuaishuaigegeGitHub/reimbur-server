@@ -60,6 +60,7 @@ export default class TaskNodeProcessor extends WorkflowNodeProcessor {
             node_id: nodeModel.id,
             // 对应的任务名称
             task_name: nodeModel.name,
+            params: "",
             createtime: now,
             updatetime: now,
         };

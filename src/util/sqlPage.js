@@ -1,7 +1,5 @@
 import sequelize from "../model/index";
 
-const { models } = sequelize;
-
 // 查询字段匹配
 const sqlReg = new RegExp(/SELECT([\s\S]*)FROM/i);
 
@@ -58,7 +56,7 @@ export const sqlPage = async (sql, replacements = [], opts = {}) => {
     }
     // 直接执行SQL返回
     return await sequelize.query(sql, {
-        type: models.sequelize.QueryTypes.SELECT,
+        type: sequelize.QueryTypes.SELECT,
         replacements,
     });
 };
