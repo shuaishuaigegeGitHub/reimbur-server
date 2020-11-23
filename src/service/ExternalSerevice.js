@@ -3,7 +3,7 @@ import sequelize from "../model/index";
 import GlobalError from "@/common/GlobalError";
 import dayjs from "dayjs";
 import { sign, deSign } from "@/util/crypto";
-import { startBaoXiaoProcess, completeBaoXiaoProcess } from "../service/ReimburService";
+import { startBaoXiaoProcess, completeBaoXiaoProcess, finishTask } from "../service/ReimburService";
 import NP from "number-precision";
 import axios from "@/util/axios";
 
@@ -168,3 +168,12 @@ function findUserById(userList) {
     });
     return Promise.all(listPromise);
 }
+
+/**
+ * 完成报销审核任务
+ */
+export const finishWorkflowTask = async (signStr = "") => {
+    let body = checkParams(signStr);
+    let refext = body.orderId;
+    await finishTask(refext);
+};

@@ -1,5 +1,5 @@
 import Router from "koa-router";
-import * as ReimburService from "@/service/ReimburService";
+import * as ExternalSerevice from "@/service/ExternalSerevice";
 
 const router = new Router({
     prefix: "/external",
@@ -9,7 +9,15 @@ const router = new Router({
  * 买量报销单生成
  */
 router.post("/payment-baoxiao-generate", async (ctx) => {
-    await ReimburService.paymentBaoXiaoGenerate(ctx.request.body.sign);
+    await ExternalSerevice.paymentBaoXiaoGenerate(ctx.request.body.sign);
+    ctx.renderJson({ msg: "报销单生成成功" });
+});
+
+/**
+ * 完成某个task
+ */
+router.post("/finish-task", async (ctx) => {
+    await ExternalSerevice.finishTask(ctx.request.body.sign);
     ctx.renderJson({ msg: "报销单生成成功" });
 });
 
