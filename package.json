@@ -30,6 +30,7 @@
         "merge": "^1.2.1",
         "module-alias": "^2.2.2",
         "mysql2": "^2.1.0",
+        "number-precision": "^1.5.0",
         "qiniu": "^7.3.2",
         "require-directory": "^2.1.1",
         "sequelize": "^6.3.4",
