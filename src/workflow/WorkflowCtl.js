@@ -117,7 +117,7 @@ export default class WorkflowCtl {
             workflowTask.node_id
         );
         params.operator = operator;
-        const transaction = await models.sequelize.transaction();
+        const transaction = await sequelize.transaction();
         try {
             const now = dayjs().unix();
             await models.workflow_task.update(
@@ -194,7 +194,7 @@ export default class WorkflowCtl {
         }
         // 修改流程流程对应的所有流程节点任务状态。
         global.logger.debug("更新流程实例[%d]对应节点[%s]的任务状态为驳回", workflowInstance.id, workflowTask.node_id);
-        const transaction = await models.sequelize.transaction();
+        const transaction = await sequelize.transaction();
         try {
             const now = dayjs().unix();
             let res = await models.workflow_task.update(

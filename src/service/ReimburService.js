@@ -388,7 +388,7 @@ export const cancelBaoXiaoProcess = async (params) => {
         // 已经是取消状态，直接返回成功
         return;
     }
-    const transaction = await models.sequelize.transaction();
+    const transaction = await sequelize.transaction();
     try {
         const now = dayjs().unix();
         let res = await models.workflow_instance.update(
@@ -504,7 +504,7 @@ export const transfer = async (params) => {
     // 支付金额
     let trsamt = Number(data.flow_params.total_money).toFixed(2);
 
-    const transaction = await models.sequelize.transaction();
+    const transaction = await sequelize.transaction();
 
     try {
         let res = await models.workflow_task.update(
@@ -650,7 +650,7 @@ export const finishTask = async (refext) => {
             });
         }
 
-        const transaction = await models.sequelize.transaction();
+        const transaction = await sequelize.transaction();
         try {
             let res = await models.cbc_bank_bill.update(
                 {
