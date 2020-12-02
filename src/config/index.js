@@ -16,7 +16,7 @@ export default {
         },
         checkLogin: {
             // 不需要进行登录验证的路径
-            excludePath: [],
+            excludePath: ["/api/external/**"],
         },
     },
     // sequelize相关配置，请查看(6.x版本) https://sequelize.org/master/class/lib/sequelize.js~Sequelize.html#instance-constructor-constructor
