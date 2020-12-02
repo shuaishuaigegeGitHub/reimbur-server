@@ -3,12 +3,12 @@
     "version": "1.0.0",
     "description": "报销系统后端",
     "main": "index.js",
-    "repository": "git@git.feigo.fun:lianjianwei/app-config-server.git",
+    "repository": "git@git.feigo.fun:lianjianwei/reimbur-server.git",
     "author": "ljw <lianjianwei@fenglinghudong.com>",
     "license": "MIT",
     "scripts": {
         "dev": "nodemon -w ./src src/index.js",
-        "start": "pm2 start ./src/index.js --name 'app-config-server'",
+        "start": "pm2 start ./src/index.js --name 'reimbur-server'",
         "model": "node src/index.js",
         "lint": "eslint src",
         "fix": "eslint src --fix"
