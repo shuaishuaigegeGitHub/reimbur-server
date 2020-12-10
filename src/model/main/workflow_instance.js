@@ -10,6 +10,10 @@ export default (sequelize) => {
                 primaryKey: true,
                 autoIncrement: true,
             },
+            no: {
+                type: Sequelize.STRING(20),
+                comment: "唯一标识",
+            },
             flow_key: {
                 type: Sequelize.STRING(50),
                 comment: "流程定义编码",

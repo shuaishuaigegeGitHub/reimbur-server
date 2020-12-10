@@ -120,6 +120,7 @@ export const queryMyBaoXiao = async (params = {}) => {
     const data = await models.workflow_instance.findAndCountAll({
         attributes: [
             "id",
+            "no",
             "cur_node_id",
             "next_node_id",
             "status",
