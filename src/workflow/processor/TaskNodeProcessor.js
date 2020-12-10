@@ -5,6 +5,7 @@ import sequelize from "@/model/index";
 import WorkflowTaskNodeEvent from "../event/WorkflowTaskNodeEvent";
 import WorkflowTaskCreatedEvent from "../event/WorkflowTaskCreatedEvent";
 import UserService from "../service/UserService";
+import GlobalError from "@/common/GlobalError";
 
 const { models } = sequelize;
 

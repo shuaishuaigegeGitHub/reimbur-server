@@ -32,8 +32,6 @@ export const getUsers = async (token) => {
  */
 export const getDepts = async () => {
     let signStr = sign({});
-    console.log(signStr);
-    console.log(deSign(signStr));
     let res = await axios({
         url: process.env.OA_SYSTEM_BASE_URL + "/admin/system_out/getDepts",
         method: "post",

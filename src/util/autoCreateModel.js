@@ -20,7 +20,7 @@ export const autoCreateModel = async (tableName, { override = false, sequelizeCo
     let conn = sequelizeConn || sequelize;
     let modelFile = path.resolve(modelDir, tableName + ".js");
     if (fs.existsSync(modelFile) && !override) {
-        console.log(`"${modelFile}" 文件已经存在！`);
+        global.logger.info(`"${modelFile}" 文件已经存在！`);
         return;
     }
     let sql = `
