@@ -16,6 +16,42 @@ import WorkflowNodeProcessorCtl from "./processor/WorkflowNodeProcessorCtl";
 const { models } = sequelize;
 
 /**
+ * 生成报销NO
+ * 生成规则：FLBR + 时间(201211) + 三位数字(从1开始，创建一个报销NO+1，预计一天最多999个报销，如果多出来，则这里生成会有问题)
+ */
+async function generatorNo() {
+    let financialConfig = await models.financial_config.findOne({
+        where: {
+            name: "baoxiao_no",
+        },
+        raw: true,
+    });
+    let value = financialConfig.value;
+    // value自增
+    models.financial_config.update(
+        {
+            value: value + 1,
+        },
+        {
+            where: {
+                name: "baoxiao_no",
+            },
+        }
+    );
+    let result = "FLRB" + dayjs().format("YYMMDD") + fillPrefixZero(value, 3);
+    return result;
+}
+
+/**
+ * 指定长度数字前缀补0
+ * @param {int} num
+ * @param {int} length 长度
+ */
+function fillPrefixZero(num, length) {
+    return (Array(length).join("0") + num).slice(-length);
+}
+
+/**
  * 流程引擎控制
  */
 export default class WorkflowCtl {
@@ -61,7 +97,9 @@ export default class WorkflowCtl {
         // 2.创建新流程实例
         global.logger.debug("创建[%s]流程实例", flowKey);
         const now = dayjs().unix();
+        const no = await generatorNo();
         const workflowInstance = {
+            no,
             flow_key: workflow.flow_key,
             cur_node_id: startModel.id,
             next_node_id: startModel.nextNodeId,
