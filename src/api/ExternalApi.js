@@ -17,7 +17,7 @@ router.post("/payment-baoxiao-generate", async (ctx) => {
  * 完成某个task
  */
 router.post("/finish-task", async (ctx) => {
-    await ExternalSerevice.finishTask(ctx.request.body.sign);
+    await ExternalSerevice.finishWorkflowTask(ctx.request.body.sign);
     ctx.renderJson({ msg: "报销单生成成功" });
 });
 
