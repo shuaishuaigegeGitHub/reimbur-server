@@ -97,9 +97,7 @@ export default class WorkflowCtl {
         // 2.创建新流程实例
         global.logger.debug("创建[%s]流程实例", flowKey);
         const now = dayjs().unix();
-        const no = await generatorNo();
         const workflowInstance = {
-            no,
             flow_key: workflow.flow_key,
             cur_node_id: startModel.id,
             next_node_id: startModel.nextNodeId,
