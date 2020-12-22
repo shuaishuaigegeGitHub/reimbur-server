@@ -1,0 +1,65 @@
+{
+    "nodes": [
+        {
+            "id": "start",
+            "name": "开始",
+            "desc": "报销开始",
+            "nodeType": "START",
+            "ext": {},
+            "type": "fl-card"
+        },
+        {
+            "id": "stage-1",
+            "name": "上级审批",
+            "desc": "由员工自行申请报销后，员工的上级进行审批",
+            "approveUser": 0,
+            "nodeType": "TASK",
+            "ext": {},
+            "type": "fl-card",
+            "approveUserName": "由申请人自行选择上级"
+        },
+        {
+            "id": "stage-2",
+            "name": "财务审批",
+            "desc": "财务总管进行审批",
+            "approveUser": 102,
+            "nodeType": "TASK",
+            "ext": {},
+            "type": "fl-card",
+            "approveUserName": "庄倩倩"
+        },
+        {
+            "id": "stage-3",
+            "name": "董事审批",
+            "desc": "董事进行审批",
+            "approveUser": 101,
+            "nodeType": "TASK",
+            "ext": {
+                "money": 100000,
+                "switch": true,
+                "otherApproveUser": 1,
+                "otherApproveUserName": "凌建风"
+            },
+            "type": "fl-card",
+            "approveUserName": "李锦新"
+        },
+        {
+            "id": "stage-4",
+            "name": "出纳审批",
+            "desc": "出纳进行审批",
+            "approveUser": 116,
+            "nodeType": "TASK",
+            "ext": {},
+            "type": "fl-card",
+            "approveUserName": "温佳颖"
+        },
+        {
+            "id": "end",
+            "name": "结束",
+            "desc": "报销结束",
+            "nodeType": "END",
+            "ext": {},
+            "type": "fl-card"
+        }
+    ]
+}

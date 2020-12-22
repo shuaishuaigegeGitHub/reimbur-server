@@ -530,7 +530,7 @@ export const transfer = async (params) => {
         }
         // 支付操作需要对接到财务系统
         res = await SystemService.transaction({
-            // 打款账户（用户打钱的银行账户ID）
+            // NOTE: 目前参数没用，后面会有用的。打款账户（用户打钱的银行账户ID）
             payId: 1,
             // 收方银行卡号
             toAccount: data.flow_params.bank_account,
