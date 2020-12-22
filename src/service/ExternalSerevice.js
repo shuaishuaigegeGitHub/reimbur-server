@@ -161,7 +161,7 @@ function findUserById(userList) {
             url: process.env.OA_SYSTEM_BASE_URL + "/admin/system_out/getUserById",
             method: "POST",
             headers: {
-                systemToken: token,
+                systemtoken: token,
             },
         });
         listPromise.push(temp);

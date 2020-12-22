@@ -36,7 +36,7 @@ export const getDepts = async () => {
         url: process.env.OA_SYSTEM_BASE_URL + "/admin/system_out/getDepts",
         method: "post",
         headers: {
-            systemToken: signStr,
+            systemtoken: signStr,
         },
     });
     return res.data;
