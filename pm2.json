@@ -1,0 +1,19 @@
+{
+    "apps": [
+        {
+            "name": "reimbur-server",
+            "script": "src/index.js"
+        }
+    ],
+    "deploy": {
+        "prod": {
+            "user": "zhuowenli",
+            "host": ["47.107.83.23"],
+            "ref": "origin/master",
+            "repo": "git@git.feigo.fun:lianjianwei/reimbur-server.git",
+            "path": "/home/zhuowenli/reimbur/reimbur-server",
+            "post-setup": "yarn",
+            "post-deploy": "yarn"
+        }
+    }
+}

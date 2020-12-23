@@ -8,10 +8,8 @@
     "license": "MIT",
     "scripts": {
         "dev": "nodemon -w ./src src/index.js",
-        "start": "pm2 start ./src/index.js --name 'reimbur-server'",
-        "model": "node src/index.js",
-        "lint": "eslint src",
-        "fix": "eslint src --fix"
+        "lint": "eslint src --fix",
+        "deploy": "pm2 deploy pm2.json prod update;pm2 deploy pm2.json prod exec 'pm2 reload reimbur-server'"
     },
     "dependencies": {
         "@koa/cors": "^3.1.0",
@@ -54,7 +52,7 @@
     },
     "husky": {
         "hooks": {
-            "pre-commit": "eslint --fix"
+            "pre-commit": "eslint src --fix"
         }
     }
 }

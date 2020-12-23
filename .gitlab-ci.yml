@@ -1,0 +1,22 @@
+stages:
+    - ci
+    - deploy
+
+ci:
+    stage: ci
+    script:
+        - yarn
+        - yarn lint
+    only:
+        - master
+    tags:
+        - fl-runner
+
+release-prod:
+    stage: deploy
+    only:
+        - master
+    script:
+        - yarn deploy
+    tags:
+        - fl-runner
