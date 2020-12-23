@@ -251,6 +251,14 @@ export const queryInstanceProcessStatus = async (id) => {
             // 如果没有指定用户
             actUser = params.approve_user_name;
         }
+        // 金额超过10W，并且是非主营业务成本的，需要换另外一个人。
+        if (curNode.ext.money && params.total_money >= curNode.ext.money) {
+            const exists = params.detailList.find((item) => !item.subject_id.startsWith(curNode.ext.subject));
+            if (exists) {
+                // 科目不是主营业务成本的就需要换人来审批
+                actUser = curNode.ext.otherApproveUserName;
+            }
+        }
         let color = null;
         if (task.status === WORKFLOW_TASK_STATUS_END) {
             // 如果是完成状态，使用绿色标识
