@@ -130,6 +130,14 @@ router.get("/instance/:id", async (ctx) => {
 });
 
 /**
+ * 获取对应ID的报销基本数据
+ */
+router.get("/base-data/:id", async (ctx) => {
+    const data = await ReimburService.getReimburBaseData(ctx.params.id);
+    ctx.renderJson({ msg: "查询成功", data });
+});
+
+/**
  * 获取科目树
  */
 router.get("/subject-tree", async (ctx) => {

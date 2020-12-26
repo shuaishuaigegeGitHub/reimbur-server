@@ -780,3 +780,21 @@ export const getReimburInstance = async (id) => {
     }
     return JSON.parse(instance.flow_params);
 };
+
+/**
+ * 获取对应申请人的最新报销基本数据
+ * @param {*} id
+ */
+export const getReimburBaseData = async (id) => {
+    const data = await models.workflow_instance.findOne({
+        where: {
+            applicant: id,
+        },
+        order: [["createtime", "DESC"]],
+        raw: true,
+    });
+    if (data) {
+        return JSON.parse(data.flow_params);
+    }
+    return null;
+};
