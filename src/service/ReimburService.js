@@ -58,7 +58,10 @@ async function findEditableById(params) {
         raw: true,
     });
     if (!workflowInstance) {
-        throw new GlobalError(505, "该报销流程已被审批，不可编辑，请刷新页面重试");
+        throw new GlobalError(
+            505,
+            "该报销流程已被审批，不可编辑，请刷新页面重试"
+        );
     }
     let taskList = await models.workflow_task.findAll({
         attributes: ["id", "status"],
@@ -67,8 +70,14 @@ async function findEditableById(params) {
         },
         raw: true,
     });
-    if (taskList.length !== 1 && taskList[0].status !== WORKFLOW_TASK_STATUS_START) {
-        throw new GlobalError(505, "该报销流程已被审批，不可编辑，请刷新页面重试");
+    if (
+        taskList.length !== 1 &&
+        taskList[0].status !== WORKFLOW_TASK_STATUS_START
+    ) {
+        throw new GlobalError(
+            505,
+            "该报销流程已被审批，不可编辑，请刷新页面重试"
+        );
     }
     return workflowInstance;
 }
@@ -143,8 +152,12 @@ export const queryMyBaoXiao = async (params = {}) => {
         rows: data.rows.map((item) => {
             let temp = { ...item };
             temp.flow_params = JSON.parse(item.flow_params);
-            temp.createtime = dayjs.unix(item.createtime).format("YYYY-MM-DD HH:mm:ss");
-            temp.updatetime = dayjs.unix(item.updatetime).format("YYYY-MM-DD HH:mm:ss");
+            temp.createtime = dayjs
+                .unix(item.createtime)
+                .format("YYYY-MM-DD HH:mm:ss");
+            temp.updatetime = dayjs
+                .unix(item.updatetime)
+                .format("YYYY-MM-DD HH:mm:ss");
             return temp;
         }),
     };
@@ -197,7 +210,9 @@ export const queryMyShenpi = async (params) => {
         let temp = { ...item };
         temp.flow_params = JSON.parse(item.flow_params);
         temp.applicant = temp.flow_params.b_user_name;
-        temp.createtime = dayjs.unix(temp.createtime).format("YYYY-MM-DD HH:mm:ss");
+        temp.createtime = dayjs
+            .unix(temp.createtime)
+            .format("YYYY-MM-DD HH:mm:ss");
         return temp;
     });
 
@@ -253,7 +268,9 @@ export const queryInstanceProcessStatus = async (id) => {
         }
         // 金额超过10W，并且是非主营业务成本的，需要换另外一个人。
         if (curNode.ext.money && params.total_money >= curNode.ext.money) {
-            const exists = params.detailList.find((item) => !item.subject_id.startsWith(curNode.ext.subject));
+            const exists = params.detailList.find(
+                (item) => !item.subject_id.startsWith(curNode.ext.subject)
+            );
             if (exists) {
                 // 科目不是主营业务成本的就需要换人来审批
                 actUser = curNode.ext.otherApproveUserName;
@@ -305,7 +322,12 @@ export const queryInstanceProcessStatus = async (id) => {
  */
 export const startBaoXiaoProcess = async (params, operator) => {
     validateParams(params);
-    return await baoXiaoWorkflowCtl.startProcess(BAOXIAO_KEY, params, operator, params.b_user_id);
+    return await baoXiaoWorkflowCtl.startProcess(
+        BAOXIAO_KEY,
+        params,
+        operator,
+        params.b_user_id
+    );
 };
 
 /**
@@ -501,7 +523,11 @@ export const transfer = async (params) => {
     `;
     let data = await sequelize.query(sql, {
         type: sequelize.QueryTypes.SELECT,
-        replacements: [params.id, WORKFLOW_INSTANCE_STATUS_START, params.user_id],
+        replacements: [
+            params.id,
+            WORKFLOW_INSTANCE_STATUS_START,
+            params.user_id,
+        ],
         plain: true,
     });
     if (!data) {
@@ -587,7 +613,13 @@ export const transfer = async (params) => {
  */
 export const finishTask = async (refext) => {
     let instance = await models.workflow_instance.findOne({
-        attributes: ["id", "flow_key", "cur_node_id", "update_by", "flow_params"],
+        attributes: [
+            "id",
+            "flow_key",
+            "cur_node_id",
+            "update_by",
+            "flow_params",
+        ],
         where: {
             refext: refext,
             status: WORKFLOW_INSTANCE_STATUS_START,
@@ -719,7 +751,9 @@ export const finishTask = async (refext) => {
                 create_by: "系统自动结算",
                 update_by: "系统自动结算",
             };
-            bankBillDetail = await models.cbc_bank_bill_detail.create(bankBillDetail);
+            bankBillDetail = await models.cbc_bank_bill_detail.create(
+                bankBillDetail
+            );
         }
         // 修改招商银行账单状态为已结算
         await models.cbc_bank_bill.update(
@@ -733,4 +767,16 @@ export const finishTask = async (refext) => {
             }
         );
     }
+};
+
+/**
+ * 获取对应ID的报销数据
+ * @param {*} id
+ */
+export const getReimburInstance = async (id) => {
+    const instance = await models.workflow_instance.findByPk(id, { raw: true });
+    if (!instance) {
+        throw new GlobalError(500, "找不到对应报销单");
+    }
+    return JSON.parse(instance.flow_params);
 };

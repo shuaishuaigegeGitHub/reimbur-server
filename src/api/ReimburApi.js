@@ -51,7 +51,10 @@ router.get("/query-my-shenpi-count", async (ctx) => {
  * 报销申请流程开始
  */
 router.post("/add", async (ctx) => {
-    await ReimburService.startBaoXiaoProcess(ctx.request.body, ctx.state.userName);
+    await ReimburService.startBaoXiaoProcess(
+        ctx.request.body,
+        ctx.state.userName
+    );
     ctx.renderJson({ msg: "申请成功" });
 });
 
@@ -116,6 +119,14 @@ router.post("/transfer", async (ctx) => {
     params.user_name = ctx.state.userName;
     await ReimburService.transfer(params);
     ctx.renderJson({ msg: "转账成功" });
+});
+
+/**
+ * 获取对应ID的报销数据
+ */
+router.get("/instance/:id", async (ctx) => {
+    const data = await ReimburService.getReimburInstance(ctx.params.id);
+    ctx.renderJson({ msg: "查询成功", data });
 });
 
 /**
