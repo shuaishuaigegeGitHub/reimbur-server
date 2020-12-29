@@ -99,4 +99,15 @@ router.post("/reject", async (ctx) => {
     ctx.renderJson({ msg: "操作成功" });
 });
 
+/**
+ * 查询采购实例（用于报销）
+ */
+router.get("/reimbur/:id", async (ctx) => {
+    const data = await PurchaseService.queryInstanceToReimbur(
+        ctx.params.id,
+        ctx.state.uid
+    );
+    ctx.renderJson({ msg: "查询成功", data });
+});
+
 export default router;
