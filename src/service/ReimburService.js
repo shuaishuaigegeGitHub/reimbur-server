@@ -322,12 +322,47 @@ export const queryInstanceProcessStatus = async (id) => {
  */
 export const startBaoXiaoProcess = async (params, operator) => {
     validateParams(params);
-    return await baoXiaoWorkflowCtl.startProcess(
+    // 发票号列表
+    let receiptNumberList = [];
+    params.detailList.forEach((detail) => {
+        if (detail.receipt_number) {
+            let arr = detail.receipt_number.split("，");
+            receiptNumberList = receiptNumberList.concat(arr);
+        }
+    });
+    if (receiptNumberList.length) {
+        // 检验发票号是否已经被使用
+        const exists = await models.reimbur_receipt.findAll({
+            where: {
+                receipt_number: receiptNumberList,
+            },
+            raw: true,
+        });
+        if (exists.length) {
+            let list = exists.map((item) => item.receipt_number);
+            throw new GlobalError(
+                506,
+                `发票号【${list.join("、")}】已经被使用了`
+            );
+        }
+    }
+    const instance = await baoXiaoWorkflowCtl.startProcess(
         BAOXIAO_KEY,
         params,
         operator,
         params.b_user_id
     );
+    if (receiptNumberList.length) {
+        // 把发票号存到 reimbur_receive 表
+        let arr = receiptNumberList.map((item) => {
+            return {
+                receipt_number: item,
+                w_id: instance.id,
+            };
+        });
+        models.reimbur_receipt.bulkCreate(arr);
+    }
+    return instance;
 };
 
 /**
@@ -369,15 +404,19 @@ function validateParams(params) {
         throw new GlobalError(501, "缺少审批人");
     }
     for (let detail of params.detailList) {
-        validateDetail(detail);
+        validateDetail(detail, params.apply_type);
     }
 }
+
+// 发票号正则校验
+const RECEIVE_NUMBER_REGEX = /[A-Z0-9]{6,8}/;
 
 /**
  * 校验报销明细
  * @param {object} detail 报销明细
+ * @param {string} apply_type 申请类型
  */
-function validateDetail(detail) {
+function validateDetail(detail, apply_type) {
     if (detail.number < 1) {
         throw new GlobalError(501, "报销明细的数量不能小于1");
     }
@@ -392,6 +431,20 @@ function validateDetail(detail) {
     }
     if (!detail.name) {
         throw new GlobalError(501, "请输入报销明细的物品名称");
+    }
+    if (apply_type === "正常请款") {
+        // 正常请款都需要发票号，校验发票号是否有问题
+        if (!detail.receipt_number) {
+            throw new GlobalError(501, "正常请款需要填写发票号");
+        }
+    }
+    if (detail.receipt_number) {
+        let arr = detail.receipt_number.split("，");
+        for (let str of arr) {
+            if (!RECEIVE_NUMBER_REGEX.test(str)) {
+                throw new GlobalError(501, `发票号【${str}】格式错误`);
+            }
+        }
     }
 }
 
@@ -457,6 +510,13 @@ export const cancelBaoXiaoProcess = async (params) => {
         if (!res) {
             throw new Error("修改报销任务状态失败");
         }
+        // 取消后删除 receipt_number 对应的报销发票号数据
+        await models.reimbur_receipt.destroy({
+            where: {
+                w_id: instance.id,
+            },
+            transaction,
+        });
         await transaction.commit();
     } catch (err) {
         global.logger.error("取消报销流程【%d】失败：%s", params.id, err.stack);
@@ -507,6 +567,12 @@ export const rejectBaoXiaoProcess = async (params) => {
     }
     await baoXiaoWorkflowCtl.rejectTask(params.id, params.user_name, {
         remark: params.remark,
+    });
+    // 取消后删除 receipt_number 对应的报销发票号数据
+    models.reimbur_receipt.destroy({
+        where: {
+            w_id: res.wi_id,
+        },
     });
 };
 
