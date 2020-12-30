@@ -170,8 +170,8 @@ export const queryMyBaoXiao = async (params = {}) => {
 export const queryMyShenpi = async (params) => {
     let sql = `
         SELECT 
-            t1.id,
-            t2.id AS instance_id,
+            t1.id AS task_id,
+            t2.id,
             t1.node_id,
             t1.status,
             t2.refext,

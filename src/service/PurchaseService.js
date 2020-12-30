@@ -71,8 +71,8 @@ export const queryMyPurchase = async (params) => {
 export const queryMyShenPi = async (params) => {
     let sql = `
         SELECT 
-            t1.id,
-            t1.p_id,
+            t1.id AS task_id,
+            t2.id,
             t2.applicant_name,
             t2.reasons,
             t2.remark,
@@ -526,6 +526,3 @@ export const queryInstanceToReimbur = async (id, applicant) => {
     }
     return result;
 };
-
-//{"a_user_id":164,"a_dept_id":264,"a_date":"2020-09-22","b_user_id":164,"b_dept_id":264,"b_date":"2020-09-22","apply_type":"正常请款","pay_type":"银行转账","approve_user":149,"receipt_number":"123456789","payee":"廖鑫海","bank_name":"厦门招商银行","bank_account":"6214831150131511","detailList":[{"money":25.6,"number":1,"unit":"笔","subject_id":"20020404","name":"滴滴打车","remark":"喝酒的那一夜"}],"a_user_name":"廖鑫海1","a_dept_name":"技术部","b_user_name":"廖鑫海1","b_dept_name":"技术部","approve_user_name":"李锦新","total_money":25.6}
-// [{"money":"86.5","number":1,"norm":"","unit":"本","subject_id":"20020104","name":"大计基课"}]
