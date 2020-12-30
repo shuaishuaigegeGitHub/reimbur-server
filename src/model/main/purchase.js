@@ -32,7 +32,11 @@ export default (sequelize) => {
                 comment: "采购明细",
             },
             approvers: {
-                type: Sequelize.STRING(255),
+                type: Sequelize.STRING,
+                comment: "审批人列表",
+            },
+            images: {
+                type: Sequelize.STRING,
                 comment: "审批人列表",
             },
             status: {

@@ -36,6 +36,7 @@ export const queryMyPurchase = async (params) => {
             "reasons",
             "approvers",
             "detail",
+            "images",
             "remark",
             "createtime",
             "update_by",
@@ -54,6 +55,7 @@ export const queryMyPurchase = async (params) => {
             let temp = { ...item };
             temp.approvers = JSON.parse(item.approvers);
             temp.detail = JSON.parse(item.detail);
+            temp.images = JSON.parse(item.images) || [];
             temp.createtime = dayjs
                 .unix(item.createtime)
                 .format("YYYY-MM-DD HH:mm:ss");
@@ -79,6 +81,7 @@ export const queryMyShenPi = async (params) => {
             t2.date,
             t1.status,
             t2.detail,
+            t2.images,
             t2.createtime,
             t1.updatetime
         FROM
@@ -111,6 +114,7 @@ export const queryMyShenPi = async (params) => {
     data.rows = data.rows.map((item) => {
         let temp = { ...item };
         temp.detail = JSON.parse(item.detail);
+        temp.images = JSON.parse(item.images) || [];
         temp.createtime = dayjs
             .unix(temp.createtime)
             .format("YYYY-MM-DD HH:mm:ss");
@@ -138,6 +142,7 @@ export const submit = async (params) => {
         };
         params.approvers = JSON.stringify(params.approvers);
         params.detail = JSON.stringify(params.detail);
+        params.images = JSON.stringify(params.images);
         params.createtime = now;
         params.updatetime = now;
         let temp = await models.purchase.create(params, { transaction });
@@ -160,6 +165,7 @@ export const edit = async (params) => {
     const now = dayjs().unix();
     params.approvers = JSON.stringify(params.approvers);
     params.detail = JSON.stringify(params.detail);
+    params.images = JSON.stringify(params.images);
     params.updatetime = now;
     await models.purchase.update(params, {
         where: {
@@ -238,6 +244,13 @@ export const cancelPurchase = async (params) => {
  */
 export const queryInstanceProcessStatus = async (params) => {
     const purchase = await models.purchase.findOne({
+        attributes: [
+            "id",
+            "status",
+            "applicant_name",
+            "createtime",
+            "updatetime",
+        ],
         where: {
             id: params.id,
         },
@@ -299,11 +312,20 @@ export const queryInstanceProcessStatus = async (params) => {
  */
 export const queryInstance = async (id) => {
     const data = await models.purchase.findByPk(id, {
-        attributes: ["id", "date", "reasons", "detail", "approvers", "remark"],
+        attributes: [
+            "id",
+            "date",
+            "reasons",
+            "detail",
+            "approvers",
+            "remark",
+            "images",
+        ],
         raw: true,
     });
     data.detail = JSON.parse(data.detail);
     data.approvers = JSON.parse(data.approvers);
+    data.images = JSON.parse(data.images) || [];
     return data;
 };
 
