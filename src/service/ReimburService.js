@@ -291,7 +291,7 @@ export const queryInstanceProcessStatus = async (id) => {
         }
         // 转账
         let transfer = false;
-        if (curNode.id === "stage-4" && instance.refext) {
+        if (curNode.id === "stage-transfer" && instance.refext) {
             // 出纳转账阶段，并且已有银行流水号，说明已经转账了
             transfer = true;
         }
