@@ -30,8 +30,7 @@ router.post("/query-my-shenpi", async (ctx) => {
  */
 router.post("/query-my-copy", async (ctx) => {
     const params = ctx.request.body || {};
-    // params.user_id = ctx.state.uid;
-    params.user_id = 166;
+    params.user_id = ctx.state.uid;
     const data = await PurchaseService.queryMyCopy(params);
     ctx.renderJson({ msg: "查询成功", data });
 });
@@ -118,6 +117,14 @@ router.get("/reimbur/:id", async (ctx) => {
         ctx.params.id,
         ctx.state.uid
     );
+    ctx.renderJson({ msg: "查询成功", data });
+});
+
+/**
+ * 查询最近一次的抄送人列表
+ */
+router.get("/last-copy", async (ctx) => {
+    const data = await PurchaseService.queryLastCopyList(ctx.state.uid);
     ctx.renderJson({ msg: "查询成功", data });
 });
 

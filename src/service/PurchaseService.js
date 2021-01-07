@@ -643,3 +643,20 @@ export const queryInstanceToReimbur = async (id, applicant) => {
     }
     return result;
 };
+
+/**
+ * 查询最近一次的抄送人列表
+ */
+export const queryLastCopyList = async (user_id) => {
+    const purchase = await models.purchase.findOne({
+        where: {
+            applicant: user_id,
+        },
+        order: [["createtime", "DESC"]],
+        raw: true,
+    });
+    if (purchase && purchase.copys) {
+        return JSON.parse(purchase.copys);
+    }
+    return null;
+};
