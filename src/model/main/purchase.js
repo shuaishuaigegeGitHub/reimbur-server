@@ -35,9 +35,17 @@ export default (sequelize) => {
                 type: Sequelize.STRING,
                 comment: "审批人列表",
             },
+            copys: {
+                type: Sequelize.STRING,
+                comment: "抄送人列表",
+            },
+            copy_ids: {
+                type: Sequelize.STRING,
+                comment: "抄送人ID列表",
+            },
             images: {
                 type: Sequelize.STRING,
-                comment: "审批人列表",
+                comment: "图片列表",
             },
             status: {
                 type: Sequelize.TINYINT(4),

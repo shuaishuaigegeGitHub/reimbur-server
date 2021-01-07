@@ -35,6 +35,7 @@ export const queryMyPurchase = async (params) => {
             "status",
             "reasons",
             "approvers",
+            "copys",
             "detail",
             "images",
             "remark",
@@ -54,6 +55,7 @@ export const queryMyPurchase = async (params) => {
         rows: data.rows.map((item) => {
             let temp = { ...item };
             temp.approvers = JSON.parse(item.approvers);
+            temp.copys = JSON.parse(item.copys) || [];
             temp.detail = JSON.parse(item.detail);
             temp.images = JSON.parse(item.images) || [];
             temp.createtime = dayjs
@@ -125,6 +127,61 @@ export const queryMyShenPi = async (params) => {
 };
 
 /**
+ * 查询我的采购申请
+ */
+export const queryMyCopy = async (params) => {
+    let sql = `
+        SELECT 
+            id,
+            applicant,
+            applicant_name,
+            date,
+            status,
+            reasons,
+            approvers,
+            copys,
+            detail,
+            images,
+            remark,
+            createtime,
+            update_by,
+            updatetime
+        FROM
+        purchase
+        WHERE FIND_IN_SET(?, copy_ids)
+        AND status = 2
+    `;
+
+    const replacements = [params.user_id];
+
+    if (params.applyTime) {
+        sql += " AND createtime BETWEEN ? AND ? ";
+        let start = dayjs(params.applyTime[0], "YYYY-MM-DD").unix();
+        let end = dayjs(params.applyTime[1], "YYYY-MM-DD").endOf("date").unix();
+        replacements.push(start);
+        replacements.push(end);
+    }
+
+    sql += " ORDER BY createtime DESC ";
+
+    let page = params.page || 1;
+    let size = params.size || 10;
+
+    const data = await sqlPage(sql, replacements, { page, size });
+    data.rows = data.rows.map((item) => {
+        let temp = { ...item };
+        temp.detail = JSON.parse(item.detail);
+        temp.images = JSON.parse(item.images) || [];
+        temp.createtime = dayjs
+            .unix(temp.createtime)
+            .format("YYYY-MM-DD HH:mm:ss");
+        return temp;
+    });
+
+    return data;
+};
+
+/**
  * 提交采购申请
  */
 export const submit = async (params) => {
@@ -141,6 +198,9 @@ export const submit = async (params) => {
             updatetime: now,
         };
         params.approvers = JSON.stringify(params.approvers);
+        // 取出抄送人ID列表
+        params.copy_ids = params.copys.map((item) => item.id).join(",");
+        params.copys = JSON.stringify(params.copys);
         params.detail = JSON.stringify(params.detail);
         params.images = JSON.stringify(params.images);
         params.createtime = now;
@@ -163,16 +223,49 @@ export const submit = async (params) => {
 export const edit = async (params) => {
     validate(params);
     const now = dayjs().unix();
+    const transaction = await sequelize.transaction();
+
+    const purchaseTask = {
+        p_id: params.id,
+        stage: 1,
+        actor_user_id: params.approvers[0].id,
+        actor_user_name: params.approvers[0].user_name,
+        status: 1,
+        createtime: now,
+        updatetime: now,
+    };
+
     params.approvers = JSON.stringify(params.approvers);
+    // 取出抄送人ID列表
+    params.copy_ids = params.copys.map((item) => item.id).join(",");
+    params.copys = JSON.stringify(params.copys);
     params.detail = JSON.stringify(params.detail);
     params.images = JSON.stringify(params.images);
     params.updatetime = now;
-    await models.purchase.update(params, {
-        where: {
-            id: params.id,
-            applicant: params.applicant,
-        },
-    });
+
+    try {
+        // 更新采购信息表
+        await models.purchase.update(params, {
+            where: {
+                id: params.id,
+                applicant: params.applicant,
+            },
+            transaction,
+        });
+        // 删除原本对应的采购审批任务数据
+        await models.purchase_task.destroy({
+            where: {
+                p_id: params.id,
+            },
+            transaction,
+        });
+        // 新增采购任务表
+        await models.purchase_task.create(purchaseTask, { transaction });
+        await transaction.commit();
+    } catch (error) {
+        await transaction.rollback();
+        throw new GlobalError(500, "编辑采购申请失败：" + error.message);
+    }
 };
 
 /**
@@ -318,6 +411,7 @@ export const queryInstance = async (id) => {
             "reasons",
             "detail",
             "approvers",
+            "copys",
             "remark",
             "images",
         ],
@@ -325,6 +419,7 @@ export const queryInstance = async (id) => {
     });
     data.detail = JSON.parse(data.detail);
     data.approvers = JSON.parse(data.approvers);
+    data.copys = JSON.parse(data.copys) || [];
     data.images = JSON.parse(data.images) || [];
     return data;
 };

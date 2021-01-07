@@ -26,6 +26,17 @@ router.post("/query-my-shenpi", async (ctx) => {
 });
 
 /**
+ * 查询我的抄送
+ */
+router.post("/query-my-copy", async (ctx) => {
+    const params = ctx.request.body || {};
+    // params.user_id = ctx.state.uid;
+    params.user_id = 166;
+    const data = await PurchaseService.queryMyCopy(params);
+    ctx.renderJson({ msg: "查询成功", data });
+});
+
+/**
  * 提交采购申请
  */
 router.post("/submit", async (ctx) => {
@@ -38,7 +49,7 @@ router.post("/submit", async (ctx) => {
 });
 
 /**
- * 提交采购申请
+ * 编辑采购申请
  */
 router.post("/edit", async (ctx) => {
     const params = ctx.request.body || {};
