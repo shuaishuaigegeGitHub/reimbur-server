@@ -364,7 +364,7 @@ export const queryInstanceProcessStatus = async (params) => {
         {
             time: dayjs.unix(purchase.createtime).format("YYYY-MM-DD HH:mm:ss"),
             act_user: purchase.applicant_name,
-            msg: "发起报销",
+            msg: "发起采购",
             color: "#409eff",
         },
     ];
