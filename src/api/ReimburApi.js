@@ -31,7 +31,8 @@ router.post("/query-my-baoxiao", async (ctx) => {
  */
 router.post("/query-my-shenpi", async (ctx) => {
     const params = ctx.request.body || {};
-    params.id = ctx.state.uid;
+    // params.id = ctx.state.uid;
+    params.id = 149;
     const data = await ReimburService.queryMyShenpi(params);
     ctx.renderJson({ msg: "查询成功", data });
 });
@@ -51,10 +52,10 @@ router.get("/query-my-shenpi-count", async (ctx) => {
  * 报销申请流程开始
  */
 router.post("/add", async (ctx) => {
-    await ReimburService.startBaoXiaoProcess(
-        ctx.request.body,
-        ctx.state.userName
-    );
+    await ReimburService.startBaoXiaoProcess(ctx.request.body, {
+        userid: ctx.state.uid,
+        username: ctx.state.userName,
+    });
     ctx.renderJson({ msg: "申请成功" });
 });
 
@@ -84,8 +85,10 @@ router.post("/cancel", async (ctx) => {
  */
 router.post("/complete", async (ctx) => {
     const params = ctx.request.body || {};
-    params.user_id = ctx.state.uid;
-    params.user_name = ctx.state.userName;
+    // params.user_id = ctx.state.uid;
+    // params.user_name = ctx.state.userName;
+    params.user_id = 149;
+    params.user_name = "李锦新";
     await ReimburService.completeBaoXiaoProcess(params);
     ctx.renderJson({ msg: "操作成功" });
 });
@@ -142,6 +145,17 @@ router.get("/base-data/:id", async (ctx) => {
  */
 router.get("/subject-tree", async (ctx) => {
     const data = await SystemService.getSubjectTree(ctx.token);
+    ctx.renderJson({ msg: "查询成功", data });
+});
+
+/**
+ * 添加评论
+ */
+router.post("/comment", async (ctx) => {
+    const params = ctx.request.body || {};
+    params.userid = ctx.state.uid;
+    params.username = ctx.state.userName;
+    const data = await ReimburService.addComment(params);
     ctx.renderJson({ msg: "查询成功", data });
 });
 

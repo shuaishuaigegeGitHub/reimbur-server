@@ -238,90 +238,67 @@ export const queryMyShenpiCount = async (params) => {
  * 查询流程实例走过的流程及状态
  */
 export const queryInstanceProcessStatus = async (id) => {
-    let instance = await models.workflow_instance.findByPk(id);
-    if (!instance) {
-        throw new GlobalError(500, "找不到对应的流程");
-    }
-    let taskAll = await models.workflow_task.findAll({
+    const reimburProcessList = await models.reimbur_process.findAll({
         where: {
-            wi_id: id,
+            w_id: id,
         },
+        order: [["createtime", "ASC"]],
         raw: true,
     });
-    const params = JSON.parse(instance.flow_params);
-    // 流程节点信息
-    const nodeRoot = nodeParser(instance);
-    const result = [
-        {
-            time: dayjs.unix(instance.createtime).format("YYYY-MM-DD HH:mm:ss"),
-            act_user: params.b_user_name,
-            msg: "发起报销",
-            color: "#409eff",
+    if (reimburProcessList.length === 0) {
+        throw new GlobalError(500, "找不到对应的报销流程");
+    }
+
+    // 找到最近一条还未审批的任务（一般只会有一条未审批的任务，如果没有，说明流程结束了）
+    const lastTask = await models.workflow_task.findOne({
+        where: {
+            wi_id: id,
+            status: 1,
         },
-    ];
-    taskAll.forEach((task) => {
-        let curNode = nodeRoot.getNodeModel(task.node_id);
-        let actUser = curNode.approveUserName;
-        if (!curNode.approveUser) {
-            // 如果没有指定用户
-            actUser = params.approve_user_name;
-        }
-        // 金额超过10W，并且是非主营业务成本的，需要换另外一个人。
-        if (curNode.ext.money && params.total_money >= curNode.ext.money) {
-            const exists = params.detailList.find(
-                (item) => !item.subject_id.startsWith(curNode.ext.subject)
-            );
-            if (exists) {
-                // 科目不是主营业务成本的就需要换人来审批
-                actUser = curNode.ext.otherApproveUserName;
-            }
-        }
-        let color = null;
-        if (task.status === WORKFLOW_TASK_STATUS_END) {
-            // 如果是完成状态，使用绿色标识
-            color = "#67C23A";
-        } else if (task.status === WORKFLOW_TASK_STATUS_CANCEL) {
-            // 取消状态
-            color = "#f55252";
-        }
-        let remark = null;
-        if (task.params) {
-            let taskParams = JSON.parse(task.params);
-            remark = taskParams.remark;
-        }
-        // 转账
-        let transfer = false;
-        if (curNode.id === "stage-transfer" && instance.refext) {
-            // 出纳转账阶段，并且已有银行流水号，说明已经转账了
-            transfer = true;
-        }
-        result.push({
-            time: dayjs.unix(task.updatetime).format("YYYY-MM-DD HH:mm:ss"),
-            act_user: actUser,
-            msg: curNode.name,
-            status: task.status,
-            transfer,
-            remark,
-            color,
-        });
+        order: [["createtime", "DESC"]],
+        raw: true,
     });
-    if (instance.status === WORKFLOW_INSTANCE_STATUS_END) {
-        // 如果该流程实例已经结束，则加上，结束节点。
-        result.push({
-            time: dayjs.unix(instance.updatetime).format("YYYY-MM-DD HH:mm:ss"),
-            act_user: params.b_user_name,
-            msg: "流程结束",
-            color: "#409eff",
+
+    if (lastTask) {
+        const instance = await models.workflow_instance.findOne({
+            attributes: ["id", "flow_define", "flow_params"],
+            raw: true,
+            where: {
+                id: id,
+                flow_key: "BAOXIAO",
+            },
+        });
+        if (!instance) {
+            throw new GlobalError(500, "找不到对应的报销流程");
+        }
+        // 查询对应的审批人名字
+        const nodeModels = nodeParser(instance);
+        const node = nodeModels.getNodeModel(lastTask.node_id);
+        let username = "";
+        if (node.approveUser) {
+            // 固定某人
+            username = node.approveUserName;
+        } else {
+            // 自己选择上级
+            let params = JSON.parse(instance.flow_params);
+            username = params.approve_user_name;
+        }
+        // 还有未审批的任务，流程未结束
+        reimburProcessList.push({
+            username: username,
+            msg: "审批中",
+            flag: 2,
         });
     }
-    return result;
+    return reimburProcessList;
 };
 
 /**
  * 开启一个报销流程
  */
-export const startBaoXiaoProcess = async (params, operator) => {
+export const startBaoXiaoProcess = async (params, user) => {
     validateParams(params);
+    const { userid, username } = user;
     // 发票号列表
     let receiptNumberList = [];
     params.detailList.forEach((detail) => {
@@ -349,9 +326,18 @@ export const startBaoXiaoProcess = async (params, operator) => {
     const instance = await baoXiaoWorkflowCtl.startProcess(
         BAOXIAO_KEY,
         params,
-        operator,
+        username,
         params.b_user_id
     );
+    // 记录报销流程信息
+    await models.reimbur_process.create({
+        w_id: instance.id,
+        userid: userid,
+        username: username,
+        msg: "发起报销",
+        time: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+        createtime: dayjs().unix(),
+    });
     if (receiptNumberList.length) {
         // 把发票号存到 reimbur_receive 表
         let arr = receiptNumberList.map((item) => {
@@ -510,6 +496,19 @@ export const cancelBaoXiaoProcess = async (params) => {
         if (!res) {
             throw new Error("修改报销任务状态失败");
         }
+        // 记录报销流程信息
+        await models.reimbur_process.create(
+            {
+                w_id: instance.id,
+                userid: params.user_id,
+                username: params.user_name,
+                msg: "取消报销",
+                flag: 3,
+                time: dayjs.unix(now).format("YYYY-MM-DD HH:mm:ss"),
+                createtime: now,
+            },
+            { transaction }
+        );
         // 取消后删除 receipt_number 对应的报销发票号数据
         await models.reimbur_receipt.destroy({
             where: {
@@ -546,6 +545,16 @@ export const completeBaoXiaoProcess = async (params) => {
     await baoXiaoWorkflowCtl.completeTask(params.id, params.user_name, {
         remark: params.remark,
     });
+    // 记录报销流程信息
+    await models.reimbur_process.create({
+        w_id: res.wi_id,
+        userid: params.user_id,
+        username: params.user_name,
+        msg: "同意报销",
+        remark: params.remark,
+        time: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+        createtime: dayjs().unix(),
+    });
 };
 
 /**
@@ -573,6 +582,17 @@ export const rejectBaoXiaoProcess = async (params) => {
         where: {
             w_id: res.wi_id,
         },
+    });
+    // 记录报销流程信息
+    await models.reimbur_process.create({
+        w_id: res.wi_id,
+        userid: params.user_id,
+        username: params.user_name,
+        msg: "驳回报销",
+        flag: 4,
+        remark: params.remark,
+        time: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+        createtime: dayjs().unix(),
     });
 };
 
@@ -623,11 +643,25 @@ export const transfer = async (params) => {
                 where: {
                     id: params.id,
                 },
+                transaction,
             }
         );
         if (!res) {
             throw new Error("更新任务信息失败");
         }
+        // 记录报销流程信息
+        await models.reimbur_process.create(
+            {
+                w_id: data.wi_id,
+                userid: params.user_id,
+                username: params.user_name,
+                msg: "报销打款",
+                remark: params.remark,
+                time: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+                createtime: dayjs().unix(),
+            },
+            { transaction }
+        );
         // 支付操作需要对接到财务系统
         res = await SystemService.transaction({
             // NOTE: 目前参数没用，后面会有用的。打款账户（用户打钱的银行账户ID）
@@ -663,6 +697,7 @@ export const transfer = async (params) => {
                 where: {
                     id: data.wi_id,
                 },
+                transaction,
             }
         );
 
@@ -712,6 +747,18 @@ export const finishTask = async (refext) => {
     await baoXiaoWorkflowCtl.completeTask(task.id, instance.update_by, {
         remark: "已到账",
     });
+    const now = dayjs().unix();
+
+    // 记录报销流程信息
+    await models.reimbur_process.create({
+        w_id: instance.id,
+        userid: 0,
+        username: "",
+        msg: "报销流程结束",
+        remark: "钱已到账",
+        time: dayjs.unix(now).format("YYYY-MM-DD HH:mm:ss"),
+        createtime: now,
+    });
 
     // 招商银行账单
     let cbcBankBill = await models.cbc_bank_bill.findOne({
@@ -723,8 +770,6 @@ export const finishTask = async (refext) => {
     if (!cbcBankBill) {
         throw new Error(`找不到招商银行账单【${refext}】`);
     }
-
-    const now = dayjs().unix();
 
     // 报销的内容
     let flowParams = JSON.parse(instance.flow_params);
@@ -863,4 +908,19 @@ export const getReimburBaseData = async (id) => {
         return JSON.parse(data.flow_params);
     }
     return null;
+};
+
+/**
+ * 添加评论
+ */
+export const addComment = async (params) => {
+    await models.reimbur_process.create({
+        w_id: params.id,
+        userid: params.userid,
+        username: params.username,
+        remark: params.remark,
+        msg: "添加了评论",
+        time: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+        createtime: dayjs().unix(),
+    });
 };

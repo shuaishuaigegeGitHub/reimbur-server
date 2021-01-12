@@ -135,8 +135,8 @@ router.post("/comment", async (ctx) => {
     const params = ctx.request.body || {};
     params.userid = ctx.state.uid;
     params.username = ctx.state.userName;
-    const data = await PurchaseService.addComment(params);
-    ctx.renderJson({ msg: "查询成功", data });
+    await PurchaseService.addComment(params);
+    ctx.renderJson({ msg: "查询成功" });
 });
 
 export default router;

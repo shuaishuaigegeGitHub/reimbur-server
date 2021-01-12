@@ -17,7 +17,7 @@ export default (workflow) => {
     if (!workflow) {
         return null;
     }
-    const workflowModel = new WorkflowModel(workflow.id, workflow.flow_name);
+    const workflowModel = new WorkflowModel(workflow.id);
     // 流程定义节点信息
     const root = JSON.parse(workflow.flow_define);
     const nodeList = root.nodes;
