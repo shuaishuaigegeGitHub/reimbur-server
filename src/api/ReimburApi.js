@@ -31,8 +31,7 @@ router.post("/query-my-baoxiao", async (ctx) => {
  */
 router.post("/query-my-shenpi", async (ctx) => {
     const params = ctx.request.body || {};
-    // params.id = ctx.state.uid;
-    params.id = 149;
+    params.id = ctx.state.uid;
     const data = await ReimburService.queryMyShenpi(params);
     ctx.renderJson({ msg: "查询成功", data });
 });
@@ -85,10 +84,8 @@ router.post("/cancel", async (ctx) => {
  */
 router.post("/complete", async (ctx) => {
     const params = ctx.request.body || {};
-    // params.user_id = ctx.state.uid;
-    // params.user_name = ctx.state.userName;
-    params.user_id = 149;
-    params.user_name = "李锦新";
+    params.user_id = ctx.state.uid;
+    params.user_name = ctx.state.userName;
     await ReimburService.completeBaoXiaoProcess(params);
     ctx.renderJson({ msg: "操作成功" });
 });
