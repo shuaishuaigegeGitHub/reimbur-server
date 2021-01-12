@@ -22,7 +22,9 @@ export default class Application {
      */
     start(callback) {
         this.koa.listen(config.port, () => {
-            logger.debug(`[${config.appName}] 启动成功：http://localhost:${config.port}`);
+            logger.debug(
+                `[${config.appName}] 启动成功：http://localhost:${config.port}`
+            );
             if (callback && typeof callback === "function") {
                 callback();
             }
@@ -90,14 +92,19 @@ export default class Application {
         const middlewareList = config.middleware.list || [];
         middlewareList.forEach((middlewareName) => {
             try {
-                let middlewareFunction = require("@/middleware/" + middlewareName).default;
-                this.koa.use(middlewareFunction(config.middleware[middlewareName]));
+                let middlewareFunction = require("@/middleware/" +
+                    middlewareName).default;
+                this.koa.use(
+                    middlewareFunction(config.middleware[middlewareName])
+                );
                 logger.debug("中间件【%s】加载成功！", middlewareName);
             } catch (err) {
                 try {
                     // 如果 middleware 目录下没有对应中间件，那么就加载 node_modules 中的
                     let middlewareFunction = require(middlewareName);
-                    this.koa.use(middlewareFunction(config.middleware[middlewareName]));
+                    this.koa.use(
+                        middlewareFunction(config.middleware[middlewareName])
+                    );
                     logger.debug("中间件【%s】加载成功！", middlewareName);
                 } catch (error) {
                     throw new Error(`中间件【${middlewareName}】不存在！`);

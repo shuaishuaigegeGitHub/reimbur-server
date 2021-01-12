@@ -209,6 +209,19 @@ export const submit = async (params) => {
 
         purchaseTask.p_id = temp.id;
         await models.purchase_task.create(purchaseTask, { transaction });
+
+        // 记录采购流程信息
+        await models.purchase_process.create(
+            {
+                p_id: temp.id,
+                username: params.applicant_name,
+                userid: params.applicant,
+                msg: "发起采购",
+                time: dayjs.unix(now).format("YYYY-MM-DD HH:mm:ss"),
+                createtime: now,
+            },
+            { transaction }
+        );
         await transaction.commit();
     } catch (error) {
         global.logger.error("提交采购申请失败：%s", error.stack);
@@ -319,85 +332,52 @@ export const cancelPurchase = async (params) => {
             },
         }
     );
-    await models.purchase_task.update(
-        {
-            status: 3,
-            updatetime: now,
-        },
-        {
-            where: {
-                p_id: params.id,
-            },
-        }
-    );
+    await models.purchase_process.create({
+        p_id: params.id,
+        username: params.update_by,
+        userid: params.applicant,
+        msg: "取消采购",
+        flag: 3,
+        time: dayjs.unix(now).format("YYYY-MM-DD HH:mm:ss"),
+        createtime: now,
+    });
 };
 
 /**
  * 查询采购实例流程状态
  */
 export const queryInstanceProcessStatus = async (params) => {
-    const purchase = await models.purchase.findOne({
-        attributes: [
-            "id",
-            "status",
-            "applicant_name",
-            "createtime",
-            "updatetime",
-        ],
-        where: {
-            id: params.id,
-        },
-        raw: true,
-    });
-    if (!purchase) {
-        throw new GlobalError(500, "找不到采购申请");
-    }
-    /// 任务列表
-    const taskList = await models.purchase_task.findAll({
+    const purchaseProcessList = await models.purchase_process.findAll({
         where: {
             p_id: params.id,
         },
-        order: [["stage", "ASC"]],
+        order: [["createtime", "ASC"]],
         raw: true,
     });
-    const result = [
-        {
-            time: dayjs.unix(purchase.createtime).format("YYYY-MM-DD HH:mm:ss"),
-            act_user: purchase.applicant_name,
-            msg: "发起采购",
-            color: "#409eff",
+    if (purchaseProcessList.length === 0) {
+        throw new GlobalError(500, "找不到对应的采购流程");
+    }
+    // 找到最近一条还未审批的任务（一般只会有一条未审批的任务，如果没有，说明流程结束了）
+    const lastTask = await models.purchase_task.findOne({
+        where: {
+            p_id: params.id,
+            status: 1,
         },
-    ];
-
-    taskList.forEach((task) => {
-        let color = null;
-        if (task.status === 2) {
-            // 如果是完成状态，使用绿色标识
-            color = "#67C23A";
-        } else if (task.status === 3) {
-            // 取消状态
-            color = "#f55252";
-        }
-        result.push({
-            time: dayjs.unix(task.updatetime).format("YYYY-MM-DD HH:mm:ss"),
-            act_user: task.actor_user_name,
-            status: task.status,
-            remark: task.remark,
-            color,
-        });
+        order: [["createtime", "DESC"]],
+        raw: true,
     });
 
-    if (purchase.status === 2) {
-        // 流程已结束
-        result.push({
-            time: dayjs.unix(purchase.updatetime).format("YYYY-MM-DD HH:mm:ss"),
-            act_user: params.applicant_name,
-            msg: "流程结束",
-            color: "#409eff",
+    if (lastTask) {
+        // 还有未审批的任务，流程未结束
+        purchaseProcessList.push({
+            time: dayjs.unix(lastTask.updatetime).format("YYYY-MM-DD HH:mm:ss"),
+            username: lastTask.actor_user_name,
+            msg: "审批中",
+            flag: 2,
         });
     }
 
-    return result;
+    return purchaseProcessList;
 };
 
 /**
@@ -508,6 +488,33 @@ export const completePurchaseTask = async (params) => {
             // 流程设定出现问题，可能是 purchaseTask.stage < 1。
             throw new Error("该流程审批出现异常，请联系管理员");
         }
+        // 记录采购流程信息
+        await models.purchase_process.create(
+            {
+                p_id: purchase.id,
+                username: params.user_name,
+                userid: params.user_id,
+                msg: "同意采购",
+                remark: params.remark,
+                time: dayjs.unix(now).format("YYYY-MM-DD HH:mm:ss"),
+                createtime: now,
+            },
+            { transaction }
+        );
+        if (purchaseTask.stage >= purchase.approvers.length) {
+            // 流程结束，记录采购流程信息
+            await models.purchase_process.create(
+                {
+                    p_id: purchase.id,
+                    username: "",
+                    userid: 0,
+                    msg: "采购流程结束",
+                    time: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+                    createtime: dayjs().unix(),
+                },
+                { transaction }
+            );
+        }
         await transaction.commit();
     } catch (error) {
         global.logger.error("完成采购任务失败：%s", error.stack);
@@ -520,7 +527,7 @@ export const completePurchaseTask = async (params) => {
  * 驳回采购申请
  */
 export const rejectPurchaseTask = async (params) => {
-    const { purchaseTask, purchase } = await checkPurchase(params);
+    const { purchase } = await checkPurchase(params);
 
     const transaction = await sequelize.transaction();
     try {
@@ -560,6 +567,20 @@ export const rejectPurchaseTask = async (params) => {
         if (!res) {
             throw new Error("修改 purchase 状态失败");
         }
+        // 记录采购流程信息
+        await models.purchase_process.create(
+            {
+                p_id: purchase.id,
+                username: params.user_name,
+                userid: params.user_id,
+                flag: 4,
+                msg: "驳回采购",
+                remark: params.remark,
+                time: dayjs.unix(now).format("YYYY-MM-DD HH:mm:ss"),
+                createtime: now,
+            },
+            { transaction }
+        );
         await transaction.commit();
     } catch (error) {
         global.logger.error("驳回采购任务失败：%s", error.stack);
@@ -659,4 +680,19 @@ export const queryLastCopyList = async (user_id) => {
         return JSON.parse(purchase.copys);
     }
     return null;
+};
+
+/**
+ * 添加评论
+ */
+export const addComment = async (params) => {
+    await models.purchase_process.create({
+        p_id: params.id,
+        userid: params.userid,
+        username: params.username,
+        remark: params.remark,
+        msg: "添加了评论",
+        time: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+        createtime: dayjs().unix(),
+    });
 };

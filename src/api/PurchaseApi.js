@@ -128,4 +128,15 @@ router.get("/last-copy", async (ctx) => {
     ctx.renderJson({ msg: "查询成功", data });
 });
 
+/**
+ * 添加评论
+ */
+router.post("/comment", async (ctx) => {
+    const params = ctx.request.body || {};
+    params.userid = ctx.state.uid;
+    params.username = ctx.state.userName;
+    const data = await PurchaseService.addComment(params);
+    ctx.renderJson({ msg: "查询成功", data });
+});
+
 export default router;
