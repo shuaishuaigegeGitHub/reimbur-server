@@ -3,8 +3,19 @@ import { Op } from "sequelize";
 import GlobalError from "@/common/GlobalError";
 import dayjs from "dayjs";
 import { sqlPage } from "../util/sqlPage";
+import { sendMsg } from "@/service/DingtalkService";
+import * as PermissionService from "@/service/PermissionService";
 
 const { models } = sequelize;
+
+// 采购 钉钉消息发送模板
+const MARKDOWN_TEMPLATE = `
+# $(h1)
+
+申请事由：$(msg)
+
+期望交付日期：$(date)
+`;
 
 /**
  * 查询我的采购申请
@@ -222,6 +233,13 @@ export const submit = async (params) => {
             },
             { transaction }
         );
+        // 发送钉钉提示
+        sendMessage({
+            userid: purchaseTask.actor_user_id,
+            h1: params.applicant_name + "提交的采购申请",
+            msg: params.reasons,
+            date: params.date,
+        });
         await transaction.commit();
     } catch (error) {
         global.logger.error("提交采购申请失败：%s", error.stack);
@@ -415,6 +433,8 @@ export const completePurchaseTask = async (params) => {
     // 3.如果当前不是最后的审批任务，则创建新审批任务
     const transaction = await sequelize.transaction();
     try {
+        // 发送钉钉提醒的数据
+        let sendDingdingMsg = null;
         const now = dayjs().unix();
         let [res] = await models.purchase_task.update(
             {
@@ -455,6 +475,14 @@ export const completePurchaseTask = async (params) => {
             if (!res) {
                 throw new Error("修改 purchase 状态失败");
             }
+            // 发送给申请人，提示钉钉审批已通过
+            sendDingdingMsg = {
+                userid: purchase.applicant,
+                h1: purchase.applicant_name + "提交的采购申请已通过",
+                msg: purchase.reasons,
+                date: purchase.date,
+                title: "采购通过",
+            };
         } else if (newPurchaseApprove) {
             // 说明还有审批人
             [res] = await models.purchase.update(
@@ -484,6 +512,13 @@ export const completePurchaseTask = async (params) => {
                 updatetime: now,
             };
             await models.purchase_task.create(newPurchaseTask, { transaction });
+            // 发送钉钉提醒
+            sendDingdingMsg = {
+                userid: newPurchaseApprove.id,
+                h1: newPurchaseApprove.user_name + "提交的采购申请",
+                msg: purchase.reasons,
+                date: purchase.date,
+            };
         } else {
             // 流程设定出现问题，可能是 purchaseTask.stage < 1。
             throw new Error("该流程审批出现异常，请联系管理员");
@@ -516,6 +551,9 @@ export const completePurchaseTask = async (params) => {
             );
         }
         await transaction.commit();
+        if (sendDingdingMsg) {
+            sendMessage(sendDingdingMsg);
+        }
     } catch (error) {
         global.logger.error("完成采购任务失败：%s", error.stack);
         await transaction.rollback();
@@ -582,6 +620,14 @@ export const rejectPurchaseTask = async (params) => {
             { transaction }
         );
         await transaction.commit();
+        // 发送钉钉提醒
+        sendMessage({
+            userid: purchase.applicant,
+            h1: "采购申请被驳回",
+            msg: purchase.reasons,
+            date: purchase.date,
+            title: "采购驳回",
+        });
     } catch (error) {
         global.logger.error("驳回采购任务失败：%s", error.stack);
         await transaction.rollback();
@@ -696,4 +742,50 @@ export const addComment = async (params) => {
         time: dayjs().format("YYYY-MM-DD HH:mm:ss"),
         createtime: dayjs().unix(),
     });
+    const purchase = await models.purchase.findByPk(params.id, { raw: true });
+    const purchaseTaskList = await models.purchase_task.findAll({
+        attributes: ["id", "actor_user_id"],
+        where: {
+            p_id: params.id,
+        },
+        raw: true,
+    });
+    const ids = [];
+    if (params.userid != purchase.applicant) {
+        ids.push(purchase.applicant);
+    }
+    purchaseTaskList.forEach((item) => {
+        if (params.userid != item.actor_user_id) {
+            ids.push(item.actor_user_id);
+        }
+    });
+    // 发送钉钉提醒
+    sendMessage({
+        userid: ids,
+        h1: params.username + " 评论：" + params.remark,
+        msg: purchase.reasons,
+        date: purchase.date,
+        title: "采购评论",
+    });
 };
+
+/**
+ * 钉钉发送消息（工作通知）
+ */
+async function sendMessage({ userid, h1, msg, date, title = "采购审批" }) {
+    // 根据系统用户ID获取钉钉用户ID
+    const data = await PermissionService.getDingtalkIdByUserId([userid]);
+    const dingtalkUserId = data.map((item) => item.dingding_id).join(",");
+    const content = {
+        msgtype: "action_card",
+        action_card: {
+            title,
+            markdown: MARKDOWN_TEMPLATE.replace("$(h1)", h1)
+                .replace("$(msg)", msg)
+                .replace("$(date)", date),
+            single_title: "前往查看",
+            single_url: "https://reimbur.feigo.fun/#/reimbur/index",
+        },
+    };
+    sendMsg(dingtalkUserId, content);
+}

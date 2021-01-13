@@ -41,3 +41,19 @@ export const getDepts = async () => {
     });
     return res.data;
 };
+
+/**
+ * 根据用户ID获取钉钉用户ID
+ * @param {*} users
+ */
+export const getDingtalkIdByUserId = async (users) => {
+    let signStr = sign({ users });
+    let res = await axios({
+        url: process.env.OA_SYSTEM_BASE_URL + "/admin/system_out/getUserDDid",
+        method: "post",
+        headers: {
+            systemtoken: signStr,
+        },
+    });
+    return res.data;
+};

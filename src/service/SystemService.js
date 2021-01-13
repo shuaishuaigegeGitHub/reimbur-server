@@ -13,6 +13,11 @@ const BUSINESS_BASE_URL = process.env.BUSINESS_BASE_URL;
 const FINANCIAL_BASE_URL = process.env.FINANCIAL_BASE_URL;
 
 /**
+ * OA系统后端地址
+ */
+const OA_BASE_URL = process.env.OA_SYSTEM_BASE_URL;
+
+/**
  * 向商务系统进行买卖量，抵扣结算操作
  * @param {Array} params [{ id: 1, type: 1, remark: '备注' }, { id: 6, type: 3, deal: 2 }]
  */
