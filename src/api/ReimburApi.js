@@ -37,6 +37,24 @@ router.post("/query-my-shenpi", async (ctx) => {
 });
 
 /**
+ * 查询抄送给我
+ */
+router.post("/query-my-copy", async (ctx) => {
+    const params = ctx.request.body || {};
+    params.id = ctx.state.uid;
+    const data = await ReimburService.queryMyCopy(params);
+    ctx.renderJson({ msg: "查询成功", data });
+});
+
+/**
+ * 查询最近一条的抄送列表
+ */
+router.get("/last-copy", async (ctx) => {
+    const data = await ReimburService.queryLastCopy(ctx.state.uid);
+    ctx.renderJson({ msg: "查询成功", data });
+});
+
+/**
  * 查询我的待审批个数
  */
 router.get("/query-my-shenpi-count", async (ctx) => {

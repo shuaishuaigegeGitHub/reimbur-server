@@ -102,6 +102,29 @@ export const editProcess = async (params) => {
     if (!res) {
         throw new GlobalError(501, "修改失败，请稍后重试");
     }
+    let copys = params.flow_params.copys;
+    let temp = copys.map((item) => item.id);
+    // 有选择抄送人，则记录一下
+    let data = await models.workflow_copy.findByPk(params.id);
+    if (data) {
+        await models.workflow_copy.update(
+            {
+                copys: JSON.stringify(copys),
+                copy_ids: JSON.stringify(temp),
+            },
+            {
+                where: {
+                    id: params.id,
+                },
+            }
+        );
+    } else {
+        await models.workflow_copy.create({
+            id: params.id,
+            copys: JSON.stringify(copys),
+            copy_ids: JSON.stringify(temp),
+        });
+    }
 };
 
 /**
@@ -220,6 +243,78 @@ export const queryMyShenpi = async (params) => {
 };
 
 /**
+ * 查询抄送给我
+ */
+export const queryMyCopy = async (params) => {
+    let sql = `
+        SELECT 
+            t1.id,
+            t1.status,
+            t1.refext,
+            t1.flow_params,
+            t1.createtime,
+            t1.updatetime
+        FROM
+        workflow_instance t1
+        LEFT JOIN workflow_copy t2 ON t1.id = t2.id
+        WHERE t1.status = 2 AND t1.flow_key = ?
+        AND FIND_IN_SET(?, t2.copy_ids)
+    `;
+
+    const replacements = [BAOXIAO_KEY, 159];
+
+    if (params.applyTime) {
+        sql += " AND t2.createtime BETWEEN ? AND ? ";
+        let start = dayjs(params.applyTime[0], "YYYY-MM-DD").unix();
+        let end = dayjs(params.applyTime[1], "YYYY-MM-DD").endOf("date").unix();
+        replacements.push(start);
+        replacements.push(end);
+    }
+
+    sql += " ORDER BY t1.updatetime DESC ";
+
+    let page = params.page || 1;
+    let size = params.size || 10;
+
+    const data = await sqlPage(sql, replacements, { page, size });
+    data.rows = data.rows.map((item) => {
+        let temp = { ...item };
+        temp.flow_params = JSON.parse(item.flow_params);
+        temp.applicant = temp.flow_params.b_user_name;
+        temp.createtime = dayjs
+            .unix(temp.createtime)
+            .format("YYYY-MM-DD HH:mm:ss");
+        temp.updatetime = dayjs
+            .unix(temp.updatetime)
+            .format("YYYY-MM-DD HH:mm:ss");
+        return temp;
+    });
+
+    return data;
+};
+
+/**
+ * 查询最近一次的抄送人列表
+ */
+export const queryLastCopy = async (userid) => {
+    const sql = `
+        SELECT copys FROM workflow_instance t1 
+        LEFT JOIN workflow_copy t2 ON t1.id = t2.id
+        WHERE t1.applicant = ${userid} AND t2.copys IS NOT NULL
+        ORDER BY t1.createtime DESC
+        LIMIT 1
+    `;
+    const data = await sequelize.query(sql, {
+        type: sequelize.QueryTypes.SELECT,
+        plain: true,
+    });
+    if (data && data.copys) {
+        return JSON.parse(data.copys);
+    }
+    return null;
+};
+
+/**
  * 查询我的待审批个数
  * @param {object} params
  */
@@ -307,6 +402,8 @@ export const startBaoXiaoProcess = async (params, user) => {
             receiptNumberList = receiptNumberList.concat(arr);
         }
     });
+    // 抄送人列表
+    const copys = params.copys;
     if (receiptNumberList.length) {
         // 检验发票号是否已经被使用
         const exists = await models.reimbur_receipt.findAll({
@@ -347,6 +444,16 @@ export const startBaoXiaoProcess = async (params, user) => {
             };
         });
         models.reimbur_receipt.bulkCreate(arr);
+    }
+    if (copys) {
+        let temp = copys.map((item) => item.id);
+        // 有选择抄送人，则记录一下
+        await models.workflow_copy.create({
+            id: instance.id,
+            copys: JSON.stringify(copys),
+            copy_ids: JSON.stringify(temp),
+            createtime: dayjs().unix(),
+        });
     }
     return instance;
 };
