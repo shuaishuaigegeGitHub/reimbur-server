@@ -15,6 +15,8 @@ import GlobalError from "@/common/GlobalError";
 import dayjs from "dayjs";
 import * as SystemService from "./SystemService";
 import { sqlPage } from "../util/sqlPage";
+import * as PermissionService from "@/service/PermissionService";
+import * as DingtalkService from "@/service/DingtalkService";
 
 const { models } = sequelize;
 
@@ -1030,4 +1032,70 @@ export const addComment = async (params) => {
         time: dayjs().format("YYYY-MM-DD HH:mm:ss"),
         createtime: dayjs().unix(),
     });
+    // 评论钉钉提醒，发送给该报销相关的(除了评论人之外的)所有人
+    const workflowInstance = await models.workflow_instance.findOne({
+        attributes: ["id", "applicant", "flow_params"],
+        where: {
+            id: params.id,
+            flow_key: "BAOXIAO",
+        },
+        raw: true,
+    });
+    workflowInstance.flow_params = JSON.parse(workflowInstance.flow_params);
+    const taskList = await models.workflow_task.findAll({
+        attributes: ["id", "actor_user_id"],
+        where: {
+            wi_id: params.id,
+        },
+        raw: true,
+    });
+    const ids = [];
+    // if (params.userid != workflowInstance.applicant) {
+    ids.push(workflowInstance.applicant);
+    // }
+    taskList.forEach((item) => {
+        if (params.userid != item.actor_user_id) {
+            ids.push(item.actor_user_id);
+        }
+    });
+    if (ids.length) {
+        sendMessage({
+            userids: ids,
+            title: "报销评论",
+            h1: params.username + " 评论：" + params.remark,
+            totalMoney: workflowInstance.flow_params.total_money,
+            date: workflowInstance.flow_params.b_date,
+            remark: workflowInstance.flow_params.remark,
+        });
+    }
 };
+
+// 报销 钉钉消息发送模板
+const MARKDOWN_TEMPLATE = `
+# $(h1)
+
+申请时间：$(date)
+
+报销总金额：$(totalMoney)
+
+备注：$(remark)
+`;
+
+async function sendMessage({ userids, h1, totalMoney, date, remark, title }) {
+    // 根据系统用户ID获取钉钉用户ID
+    const data = await PermissionService.getDingtalkIdByUserId(userids);
+    const dingtalkUserId = data.map((item) => item.dingding_id).join(",");
+    const content = {
+        msgtype: "action_card",
+        action_card: {
+            title,
+            markdown: MARKDOWN_TEMPLATE.replace("$(h1)", h1)
+                .replace("$(date)", date)
+                .replace("$(totalMoney)", totalMoney)
+                .replace("$(remark)", remark),
+            single_title: "前往查看",
+            single_url: "https://reimbur.feigo.fun/#/reimbur/index",
+        },
+    };
+    DingtalkService.sendMsg(dingtalkUserId, content);
+}
