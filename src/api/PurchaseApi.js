@@ -26,6 +26,17 @@ router.post("/query-my-shenpi", async (ctx) => {
 });
 
 /**
+ * 查询我的待审批个数
+ */
+router.get("/query-my-shenpi-count", async (ctx) => {
+    const params = {
+        id: ctx.state.uid,
+    };
+    const data = await PurchaseService.queryMyShenpiCount(params);
+    ctx.renderJson({ msg: "查询成功", data });
+});
+
+/**
  * 查询我的抄送
  */
 router.post("/query-my-copy", async (ctx) => {

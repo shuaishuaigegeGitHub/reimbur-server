@@ -138,6 +138,20 @@ export const queryMyShenPi = async (params) => {
 };
 
 /**
+ * 查询我的待审批个数
+ * @param {object} params
+ */
+export const queryMyShenpiCount = async (params) => {
+    let count = await models.purchase_task.count({
+        where: {
+            actor_user_id: params.id,
+            status: 1,
+        },
+    });
+    return count;
+};
+
+/**
  * 查询我的采购申请
  */
 export const queryMyCopy = async (params) => {
