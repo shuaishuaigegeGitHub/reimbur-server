@@ -183,6 +183,7 @@ export const queryMyCopy = async (params) => {
         let temp = { ...item };
         temp.detail = JSON.parse(item.detail);
         temp.images = JSON.parse(item.images) || [];
+        temp.copys = JSON.parse(item.copys) || [];
         temp.createtime = dayjs
             .unix(temp.createtime)
             .format("YYYY-MM-DD HH:mm:ss");
@@ -235,7 +236,7 @@ export const submit = async (params) => {
         );
         // 发送钉钉提示
         sendMessage({
-            userid: purchaseTask.actor_user_id,
+            userid: [purchaseTask.actor_user_id],
             h1: params.applicant_name + "提交的采购申请",
             msg: params.reasons,
             date: params.date,
@@ -477,7 +478,7 @@ export const completePurchaseTask = async (params) => {
             }
             // 发送给申请人，提示钉钉审批已通过
             sendDingdingMsg = {
-                userid: purchase.applicant,
+                userid: [purchase.applicant],
                 h1: purchase.applicant_name + "提交的采购申请已通过",
                 msg: purchase.reasons,
                 date: purchase.date,
@@ -514,7 +515,7 @@ export const completePurchaseTask = async (params) => {
             await models.purchase_task.create(newPurchaseTask, { transaction });
             // 发送钉钉提醒
             sendDingdingMsg = {
-                userid: newPurchaseApprove.id,
+                userid: [newPurchaseApprove.id],
                 h1: newPurchaseApprove.user_name + "提交的采购申请",
                 msg: purchase.reasons,
                 date: purchase.date,
@@ -774,7 +775,7 @@ export const addComment = async (params) => {
  */
 async function sendMessage({ userid, h1, msg, date, title = "采购审批" }) {
     // 根据系统用户ID获取钉钉用户ID
-    const data = await PermissionService.getDingtalkIdByUserId([userid]);
+    const data = await PermissionService.getDingtalkIdByUserId(userid);
     const dingtalkUserId = data.map((item) => item.dingding_id).join(",");
     const content = {
         msgtype: "action_card",
