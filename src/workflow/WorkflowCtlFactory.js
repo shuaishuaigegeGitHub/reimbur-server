@@ -18,13 +18,14 @@ export default class WorkflowCtlFactory {
      */
     static baoXiaoWorkflowCtl() {
         if (!WorkflowCtlFactory.baoXiaoWorkflowCtlInstance) {
+            const userServie = new BaoXiaoUserService();
             const workflowNodeProcessorList = [
                 new StartNodeProcessor(new BaoXiaoWorkflowStartNodeEvent()),
                 new EndNodeProcessor(new BaoXiaoWorkflowEndNodeEvent()),
                 new TaskNodeProcessor(
-                    new BaoXiaoWorkflowTaskNodeEvent(),
+                    new BaoXiaoWorkflowTaskNodeEvent(userServie),
                     new BaoXiaoWorkflowTaskCreatedEvent(),
-                    new BaoXiaoUserService()
+                    userServie
                 ),
             ];
             const workflowNodeProcessorCtl = new WorkflowNodeProcessorCtl(

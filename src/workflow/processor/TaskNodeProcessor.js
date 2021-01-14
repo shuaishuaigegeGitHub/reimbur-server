@@ -16,13 +16,22 @@ export default class TaskNodeProcessor extends WorkflowNodeProcessor {
     constructor(taskNodeEvent, taskCreatedEvent, userService) {
         super();
         if (!(taskNodeEvent instanceof WorkflowTaskNodeEvent)) {
-            throw new GlobalError(600, `${TaskNodeProcessor.name} 需要事件 ${WorkflowTaskNodeEvent.name}`);
+            throw new GlobalError(
+                600,
+                `${TaskNodeProcessor.name} 需要事件 ${WorkflowTaskNodeEvent.name}`
+            );
         }
         if (!(taskCreatedEvent instanceof WorkflowTaskCreatedEvent)) {
-            throw new GlobalError(600, `${TaskNodeProcessor.name} 需要事件 ${WorkflowTaskCreatedEvent.name}`);
+            throw new GlobalError(
+                600,
+                `${TaskNodeProcessor.name} 需要事件 ${WorkflowTaskCreatedEvent.name}`
+            );
         }
         if (!(userService instanceof UserService)) {
-            throw new GlobalError(600, `${TaskNodeProcessor.name} 需要服务 ${UserService.name}`);
+            throw new GlobalError(
+                600,
+                `${TaskNodeProcessor.name} 需要服务 ${UserService.name}`
+            );
         }
         this.nodeType = TASK_NODE_TYPE;
         this.taskNodeEvent = taskNodeEvent;
@@ -35,11 +44,24 @@ export default class TaskNodeProcessor extends WorkflowNodeProcessor {
      * @param {object} workflowInstance 流程实例
      * @param {object} workflowModel 流程模型
      * @param {object} nodeModel 节点模型
-     * @param {object} workflowParam 流程参数
+     * @param {object} workflowParam 参数
      */
-    async process(workflowInstance, workflowModel, nodeModel, workflowParam) {
-        await this.createTask(workflowInstance, nodeModel, workflowParam);
-        await this.taskNodeEvent.onEvent(workflowInstance, nodeModel, workflowParam);
+    async process(workflowInstance, workflowModel, nodeModel, param) {
+        await models.workflow_instance.update(
+            {
+                cur_node_id: nodeModel.id,
+                next_node_id: nodeModel.nextNodeId,
+                updatetime: dayjs().unix(),
+                update_by: param.operator,
+            },
+            {
+                where: {
+                    id: workflowInstance.id,
+                },
+            }
+        );
+        await this.createTask(workflowInstance, nodeModel, param);
+        await this.taskNodeEvent.onEvent(workflowInstance, nodeModel, param);
     }
 
     /**
@@ -51,7 +73,11 @@ export default class TaskNodeProcessor extends WorkflowNodeProcessor {
     async createTask(workflowInstance, nodeModel, workflowParam) {
         global.logger.debug("创建任务[%s]", nodeModel.name);
         // 获取任务参与者（审批人）
-        const userIds = await this.userService.queryTaskPerformer(workflowInstance, nodeModel, workflowParam);
+        const userIds = await this.userService.queryTaskPerformer(
+            workflowInstance,
+            nodeModel,
+            workflowParam
+        );
         const now = dayjs().unix();
         // 流程任务
         const workflowTask = {
@@ -71,7 +97,11 @@ export default class TaskNodeProcessor extends WorkflowNodeProcessor {
             task = Object.assign({}, workflowTask);
             task.actor_user_id = userId;
             await models.workflow_task.create(task);
-            await this.taskCreatedEvent.onEvent(workflowInstance, nodeModel, workflowParam);
+            await this.taskCreatedEvent.onEvent(
+                workflowInstance,
+                nodeModel,
+                workflowParam
+            );
         }
         return userIds.length;
     }

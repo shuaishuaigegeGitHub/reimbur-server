@@ -59,6 +59,7 @@ export const sendMsg = async (userid, msg) => {
         },
     });
     if (data.errcode) {
+        global.logger.error("发送工作通知异常：%s", data.errmsg);
         throw new Error(data.errmsg);
     }
 };
@@ -76,6 +77,7 @@ export const getUserIdByMobile = async (mobile) => {
         },
     });
     if (data.errcode) {
+        global.logger.error("根据手机号获取用户ID异常：%s", data.errmsg);
         throw new Error(data.errmsg);
     }
     return data.userid;
