@@ -29,16 +29,16 @@ export default class EndNodeProcessor extends WorkflowNodeProcessor {
      * @param {object} workflowInstance 流程实例
      * @param {object} workflowModel 流程模型
      * @param {object} nodeModel 节点模型
-     * @param {object} workflowParam 流程参数
+     * @param {object} param 流程参数
      */
-    async process(workflowInstance, workflowModel, nodeModel, workflowParam) {
+    async process(workflowInstance, workflowModel, nodeModel, param) {
         await models.workflow_instance.update(
             {
                 cur_node_id: nodeModel.id,
                 next_node_id: "",
                 status: WORKFLOW_INSTANCE_STATUS_END,
                 updatetime: dayjs().unix(),
-                update_by: workflowParam.operator,
+                update_by: param.operator,
             },
             {
                 where: {
@@ -46,10 +46,6 @@ export default class EndNodeProcessor extends WorkflowNodeProcessor {
                 },
             }
         );
-        await this.endNodeEvent.onEvent(
-            workflowInstance,
-            nodeModel,
-            workflowParam
-        );
+        await this.endNodeEvent.onEvent(workflowInstance, nodeModel, param);
     }
 }

@@ -5,7 +5,7 @@ export default class WorkflowStartNodeEvent {
     /**
      * @param {object} workflowInstance 流程实例
      * @param {object} nodeModel 节点模型
-     * @param {object} workflowParam 流程参数
+     * @param {object} param 流程参数
      */
-    async onEvent(workflowInstance, nodeModel, workflowParam) {}
+    async onEvent(workflowInstance, nodeModel, param) {}
 }

@@ -124,7 +124,7 @@ export default class WorkflowCtl {
             instance,
             workflowModel,
             startModel,
-            workflowParam
+            {}
         );
         // 返回新流程实例
         return instance;

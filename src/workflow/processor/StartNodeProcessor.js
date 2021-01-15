@@ -10,7 +10,10 @@ export default class StartNodeProcessor extends WorkflowNodeProcessor {
     constructor(startNodeEvent) {
         super();
         if (!(startNodeEvent instanceof WorkflowStartNodeEvent)) {
-            throw new GlobalError(600, `${StartNodeProcessor.name} 需要事件 ${WorkflowStartNodeEvent.name}`);
+            throw new GlobalError(
+                600,
+                `${StartNodeProcessor.name} 需要事件 ${WorkflowStartNodeEvent.name}`
+            );
         }
         this.nodeType = START_NODE_TYPE;
         this.startNodeEvent = startNodeEvent;
@@ -21,10 +24,10 @@ export default class StartNodeProcessor extends WorkflowNodeProcessor {
      * @param {object} workflowInstance 流程实例
      * @param {object} workflowModel 流程模型
      * @param {object} nodeModel 节点模型
-     * @param {object} workflowParam 流程参数
+     * @param {object} param 流程参数
      */
-    async process(workflowInstance, workflowModel, nodeModel, workflowParam) {
+    async process(workflowInstance, workflowModel, nodeModel, param) {
         const startModel = workflowModel.getStartModel();
-        await this.startNodeEvent.onEvent(workflowInstance, startModel, workflowParam);
+        await this.startNodeEvent.onEvent(workflowInstance, startModel, param);
     }
 }

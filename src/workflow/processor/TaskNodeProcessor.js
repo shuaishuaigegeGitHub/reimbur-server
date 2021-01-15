@@ -44,7 +44,7 @@ export default class TaskNodeProcessor extends WorkflowNodeProcessor {
      * @param {object} workflowInstance 流程实例
      * @param {object} workflowModel 流程模型
      * @param {object} nodeModel 节点模型
-     * @param {object} workflowParam 参数
+     * @param {object} param 参数
      */
     async process(workflowInstance, workflowModel, nodeModel, param) {
         await models.workflow_instance.update(
@@ -68,15 +68,15 @@ export default class TaskNodeProcessor extends WorkflowNodeProcessor {
      * 创建任务
      * @param {object} workflowInstance 流程实例
      * @param {object} nodeModel 节点模型
-     * @param {object} workflowParam 流程参数
+     * @param {object} param 流程参数
      */
-    async createTask(workflowInstance, nodeModel, workflowParam) {
+    async createTask(workflowInstance, nodeModel, param) {
         global.logger.debug("创建任务[%s]", nodeModel.name);
         // 获取任务参与者（审批人）
         const userIds = await this.userService.queryTaskPerformer(
             workflowInstance,
             nodeModel,
-            workflowParam
+            param
         );
         const now = dayjs().unix();
         // 流程任务
@@ -100,7 +100,7 @@ export default class TaskNodeProcessor extends WorkflowNodeProcessor {
             await this.taskCreatedEvent.onEvent(
                 workflowInstance,
                 nodeModel,
-                workflowParam
+                param
             );
         }
         return userIds.length;

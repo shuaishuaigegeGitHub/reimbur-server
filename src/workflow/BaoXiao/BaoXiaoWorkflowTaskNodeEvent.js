@@ -33,14 +33,14 @@ export default class BaoXiaoWorkflowTaskNodeEvent extends WorkflowTaskNodeEvent 
     /**
      * @param {object} workflowInstance 流程实例
      * @param {object} nodeModel 节点模型
-     * @param {object} workflowParam 流程参数
+     * @param {object} param 流程参数
      */
-    async onEvent(workflowInstance, nodeModel, workflowParam) {
+    async onEvent(workflowInstance, nodeModel, param) {
         global.logger.info("报销流程任务[%s]", nodeModel.name);
         const userids = await this.userService.queryTaskPerformer(
             workflowInstance,
             nodeModel,
-            workflowParam
+            param
         );
         // 发送钉钉消息提醒
         await this.sendMessage({

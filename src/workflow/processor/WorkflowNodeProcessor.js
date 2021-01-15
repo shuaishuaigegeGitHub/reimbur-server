@@ -14,7 +14,7 @@ export default class WorkflowNodeProcessor {
      * @param {object} workflow 流程
      * @param {object} workflowModel 流程模型
      * @param {object} nodeModel 节点模型
-     * @param {object} workflowParam 流程参数
+     * @param {object} param 流程参数
      */
-    process(workflow, workflowModel, nodeModel, workflowParam) {}
+    process(workflow, workflowModel, nodeModel, param) {}
 }

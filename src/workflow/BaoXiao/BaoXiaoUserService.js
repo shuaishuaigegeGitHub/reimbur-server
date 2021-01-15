@@ -9,7 +9,7 @@ export default class BaoXiaoUserService extends UserService {
      * @param {TaskModel} nodeModel 任务节点模型
      * @param {object} workflowParam 流程实例参数
      */
-    async queryTaskPerformer(workflowInstance, nodeModel, workflowParam) {
+    async queryTaskPerformer(workflowInstance, nodeModel, param) {
         global.logger.debug("查询任务[%s]的审批人", nodeModel.name);
         const flowParams = workflowInstance.flow_params;
         let approveUser = nodeModel.approveUser || flowParams.approve_user;
