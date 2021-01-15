@@ -521,9 +521,6 @@ function validateDetail(detail, apply_type) {
     if (!detail.unit) {
         throw new GlobalError(501, "报销明细的单位必须填写");
     }
-    if (!detail.subject_id) {
-        throw new GlobalError(501, "请选择报销明细的科目");
-    }
     if (!detail.name) {
         throw new GlobalError(501, "请输入报销明细的物品名称");
     }
