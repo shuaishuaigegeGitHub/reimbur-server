@@ -60,7 +60,10 @@ export default class WorkflowCtl {
      */
     constructor(workflowNodeProcessorCtl) {
         if (!(workflowNodeProcessorCtl instanceof WorkflowNodeProcessorCtl)) {
-            throw new GlobalError(600, `${WorkflowCtl.name} 需要处理器 ${WorkflowNodeProcessorCtl.name}`);
+            throw new GlobalError(
+                600,
+                `${WorkflowCtl.name} 需要处理器 ${WorkflowNodeProcessorCtl.name}`
+            );
         }
         this.workflowNodeProcessorCtl = workflowNodeProcessorCtl;
     }
@@ -116,7 +119,13 @@ export default class WorkflowCtl {
 
         // 3.执行开始节点
         global.logger.debug("执行开始节点");
-        await this.workflowNodeProcessorCtl.process(instance, workflowModel, startModel, workflowParam);
+        instance.flow_params = JSON.parse(instance.flow_params);
+        await this.workflowNodeProcessorCtl.process(
+            instance,
+            workflowModel,
+            startModel,
+            workflowParam
+        );
         // 返回新流程实例
         return instance;
     }
@@ -128,7 +137,9 @@ export default class WorkflowCtl {
      * @param {object} workflowParam 参数
      */
     async completeTask(workflowTaskId, operator, params) {
-        const workflowTask = await models.workflow_task.findByPk(workflowTaskId);
+        const workflowTask = await models.workflow_task.findByPk(
+            workflowTaskId
+        );
         if (!workflowTask) {
             throw new GlobalError(600, "找不到对应的流程任务");
         }
@@ -141,8 +152,14 @@ export default class WorkflowCtl {
         if (workflowTask.status === WORKFLOW_TASK_STATUS_REJECT) {
             throw new GlobalError(600, "该任务已被驳回");
         }
-        global.logger.debug("[%s]完成流程任务--[%s]", operator, workflowTask.task_name);
-        const workflowInstance = await models.workflow_instance.findByPk(workflowTask.wi_id);
+        global.logger.debug(
+            "[%s]完成流程任务--[%s]",
+            operator,
+            workflowTask.task_name
+        );
+        const workflowInstance = await models.workflow_instance.findByPk(
+            workflowTask.wi_id
+        );
         if (!workflowInstance) {
             throw new GlobalError(600, "找不到对应的流程实例");
         }
@@ -193,6 +210,7 @@ export default class WorkflowCtl {
             throw new GlobalError(600, err.message);
         }
         const workflowModel = nodeParser(workflowInstance);
+        workflowInstance.flow_params = JSON.parse(workflowInstance.flow_params);
         const curNode = workflowModel.getNodeModel(workflowTask.node_id);
         await this.workflowNodeProcessorCtl.process(
             workflowInstance,
@@ -210,7 +228,9 @@ export default class WorkflowCtl {
      * @param {object} workflowParam 实例参数
      */
     async rejectTask(workflowTaskId, operator, params) {
-        const workflowTask = await models.workflow_task.findByPk(workflowTaskId);
+        const workflowTask = await models.workflow_task.findByPk(
+            workflowTaskId
+        );
         if (!workflowTask) {
             throw new GlobalError(600, "找不到对应的流程任务");
         }
@@ -223,13 +243,23 @@ export default class WorkflowCtl {
         if (workflowTask.status === WORKFLOW_TASK_STATUS_REJECT) {
             throw new GlobalError(600, "该任务已被驳回");
         }
-        global.logger.debug("[%s]驳回流程任务--[%s]", operator, workflowTask.task_name);
-        const workflowInstance = await models.workflow_instance.findByPk(workflowTask.wi_id);
+        global.logger.debug(
+            "[%s]驳回流程任务--[%s]",
+            operator,
+            workflowTask.task_name
+        );
+        const workflowInstance = await models.workflow_instance.findByPk(
+            workflowTask.wi_id
+        );
         if (!workflowInstance) {
             throw new GlobalError(600, "找不到对应的流程实例");
         }
         // 修改流程流程对应的所有流程节点任务状态。
-        global.logger.debug("更新流程实例[%d]对应节点[%s]的任务状态为驳回", workflowInstance.id, workflowTask.node_id);
+        global.logger.debug(
+            "更新流程实例[%d]对应节点[%s]的任务状态为驳回",
+            workflowInstance.id,
+            workflowTask.node_id
+        );
         const transaction = await sequelize.transaction();
         try {
             const now = dayjs().unix();
