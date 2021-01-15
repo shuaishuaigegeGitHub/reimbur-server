@@ -1074,9 +1074,9 @@ export const addComment = async (params) => {
         raw: true,
     });
     const ids = [];
-    // if (params.userid != workflowInstance.applicant) {
-    ids.push(workflowInstance.applicant);
-    // }
+    if (params.userid != workflowInstance.applicant) {
+        ids.push(workflowInstance.applicant);
+    }
     taskList.forEach((item) => {
         if (params.userid != item.actor_user_id) {
             ids.push(item.actor_user_id);
