@@ -87,6 +87,16 @@ router.post("/edit", async (ctx) => {
 });
 
 /**
+ * 审批过程审批人修改保存科目
+ */
+router.post("/save-subject", async (ctx) => {
+    const params = ctx.request.body || {};
+    params.user_id = ctx.state.uid;
+    await ReimburService.saveSubject(params);
+    ctx.renderJson({ msg: "修改成功" });
+});
+
+/**
  * 取消报销流程
  */
 router.post("/cancel", async (ctx) => {

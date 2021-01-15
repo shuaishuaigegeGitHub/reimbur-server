@@ -130,6 +130,33 @@ export const editProcess = async (params) => {
 };
 
 /**
+ * 保存科目信息
+ */
+export const saveSubject = async (params) => {
+    const task = await models.workflow_task.findOne({
+        where: {
+            id: params.task_id,
+            actor_user_id: params.user_id,
+            status: 1,
+        },
+    });
+    if (!task) {
+        throw new GlobalError(500, "保存失败，请刷新重试");
+    }
+    await models.workflow_instance.update(
+        {
+            flow_params: JSON.stringify(params.flow_params),
+        },
+        {
+            where: {
+                id: task.wi_id,
+                status: 1,
+            },
+        }
+    );
+};
+
+/**
  * 查询我的报销申请记录
  * @param {object} params
  */
