@@ -11,12 +11,17 @@ export default class BaoXiaoUserService extends UserService {
      */
     async queryTaskPerformer(workflowInstance, nodeModel, workflowParam) {
         global.logger.debug("查询任务[%s]的审批人", nodeModel.name);
-        const flowParams = JSON.parse(workflowInstance.flow_params);
+        const flowParams = workflowInstance.flow_params;
         let approveUser = nodeModel.approveUser || flowParams.approve_user;
-        if (nodeModel.ext.money && flowParams.total_money >= nodeModel.ext.money) {
+        if (
+            nodeModel.ext.money &&
+            flowParams.total_money >= nodeModel.ext.money
+        ) {
             // 超过限制金额则需要换个人审批
             // 查找是否有非主营业务的报销明细
-            const exists = flowParams.detailList.find((item) => !item.subject_id.startsWith(nodeModel.ext.subject));
+            const exists = flowParams.detailList.find(
+                (item) => !item.subject_id.startsWith(nodeModel.ext.subject)
+            );
             if (exists) {
                 // 科目不是主营业务成本的就需要换人来审批
                 approveUser = nodeModel.ext.otherApproveUser;
