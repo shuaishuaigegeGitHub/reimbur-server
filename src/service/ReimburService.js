@@ -266,9 +266,6 @@ export const queryMyShenpi = async (params) => {
         temp.createtime = dayjs
             .unix(temp.createtime)
             .format("YYYY-MM-DD HH:mm:ss");
-        temp.updatetime = dayjs
-            .unix(temp.updatetime)
-            .format("YYYY-MM-DD HH:mm:ss");
         return temp;
     });
 
