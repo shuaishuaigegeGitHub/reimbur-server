@@ -386,7 +386,7 @@ export const queryInstanceProcessStatus = async (id) => {
 
     if (lastTask) {
         const instance = await models.workflow_instance.findOne({
-            attributes: ["id", "flow_define", "flow_params"],
+            attributes: ["id", "flow_define", "flow_params", "refext"],
             raw: true,
             where: {
                 id: id,
@@ -408,10 +408,16 @@ export const queryInstanceProcessStatus = async (id) => {
             let params = JSON.parse(instance.flow_params);
             username = params.approve_user_name;
         }
+        let msg = "审批中";
+        if (instance.refext) {
+            // 说明打款了
+            username = "等待报销款到账";
+            msg = "";
+        }
         // 还有未审批的任务，流程未结束
         reimburProcessList.push({
             username: username,
-            msg: "审批中",
+            msg,
             flag: 2,
         });
     }
