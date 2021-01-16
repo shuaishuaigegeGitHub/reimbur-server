@@ -86,6 +86,7 @@ export const queryMyShenPi = async (params) => {
             t1.status,
             t2.detail,
             t2.images,
+            t2.copys,
             t2.createtime,
             t1.updatetime
         FROM
@@ -119,6 +120,7 @@ export const queryMyShenPi = async (params) => {
         let temp = { ...item };
         temp.detail = JSON.parse(item.detail);
         temp.images = JSON.parse(item.images) || [];
+        temp.copys = JSON.parse(item.copys) || [];
         temp.createtime = dayjs
             .unix(temp.createtime)
             .format("YYYY-MM-DD HH:mm:ss");
@@ -608,7 +610,7 @@ export const rejectPurchaseTask = async (params) => {
             },
             {
                 where: {
-                    id: params.id,
+                    id: purchase.id,
                     status: 1,
                 },
                 transaction,
