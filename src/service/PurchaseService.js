@@ -661,9 +661,9 @@ async function checkPurchase(params) {
     if (!purchaseTask) {
         throw new GlobalError(500, "找不到流程任务");
     }
-    // if (purchaseTask.updatetime !== params.updatetime) {
-    //     throw new GlobalError(506, "该流程实例已被编辑过，请刷新页面再审批!");
-    // }
+    if (purchaseTask.updatetime !== params.updatetime) {
+        throw new GlobalError(506, "该流程实例已被编辑过，请刷新页面再审批!");
+    }
 
     const purchase = await models.purchase.findByPk(purchaseTask.p_id, {
         raw: true,
