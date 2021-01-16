@@ -486,6 +486,7 @@ export const queryInstance = async (id) => {
  */
 export const completePurchaseTask = async (params) => {
     const { purchaseTask, purchase } = await checkPurchase(params);
+    params.remark = params.remark || "";
 
     // 1.修改指定id的purchase_task数据的status，remark，updatetime
     // 2.如果当前是最后的审批任务，则完成采购审批流程

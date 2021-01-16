@@ -682,6 +682,7 @@ export const completeBaoXiaoProcess = async (params) => {
     if (res.updatetime !== params.updatetime) {
         throw new GlobalError(506, "该流程实例已被编辑过，请刷新页面再审批!");
     }
+    params.remark = params.remark || "";
     await baoXiaoWorkflowCtl.completeTask(params.id, params.user_name, {
         remark: params.remark,
     });
