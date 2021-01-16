@@ -265,7 +265,6 @@ export const submit = async (params) => {
 export const edit = async (params) => {
     validate(params);
     const now = dayjs().unix();
-    const transaction = await sequelize.transaction();
 
     const purchaseTask = {
         p_id: params.id,
@@ -285,7 +284,60 @@ export const edit = async (params) => {
     params.images = JSON.stringify(params.images);
     params.updatetime = now;
 
+    const transaction = await sequelize.transaction();
+
     try {
+        const purchaseTaskCount = await models.purchase_task.count(
+            {
+                where: {
+                    p_id: params.id,
+                },
+            },
+            { transaction }
+        );
+        const purchase = await models.purchase.findByPk(params.id, {
+            raw: true,
+            transaction,
+        });
+        if (purchase.status === 2) {
+            // 流程已结束，不能编辑
+            throw new Error("该流程已通过无法编辑");
+        }
+        // 发送钉钉消息的数据
+        let dingtalkMsg = null;
+        if (purchase.status == 1 && purchaseTaskCount === 1) {
+            // 说明刚提交，还没有被任何人审批过
+            // 删除原本对应的采购审批任务数据
+            await models.purchase_task.destroy({
+                where: {
+                    p_id: params.id,
+                },
+                transaction,
+            });
+        } else {
+            // 被驳回后，或者取消后重新编辑
+            await models.purchase_process.create(
+                {
+                    p_id: params.id,
+                    username: purchase.applicant_name,
+                    userid: purchase.applicant,
+                    msg: "重新编辑了采购申请",
+                    flag: 1,
+                    time: dayjs.unix(now).format("YYYY-MM-DD HH:mm:ss"),
+                    createtime: now,
+                },
+                { transaction }
+            );
+            params.status = 1;
+            // 修改purchase的状态
+            // 钉钉提醒
+            dingtalkMsg = {
+                userid: [purchaseTask.actor_user_id],
+                h1: params.applicant_name + "重新编辑了采购申请",
+                msg: params.reasons,
+                date: params.date,
+            };
+        }
         // 更新采购信息表
         await models.purchase.update(params, {
             where: {
@@ -294,16 +346,13 @@ export const edit = async (params) => {
             },
             transaction,
         });
-        // 删除原本对应的采购审批任务数据
-        await models.purchase_task.destroy({
-            where: {
-                p_id: params.id,
-            },
-            transaction,
-        });
         // 新增采购任务表
         await models.purchase_task.create(purchaseTask, { transaction });
         await transaction.commit();
+        if (dingtalkMsg) {
+            // 发送钉钉提醒
+            sendMessage(dingtalkMsg);
+        }
     } catch (error) {
         await transaction.rollback();
         throw new GlobalError(500, "编辑采购申请失败：" + error.message);
