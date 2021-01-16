@@ -8,15 +8,6 @@ import * as PermissionService from "@/service/PermissionService";
 
 const { models } = sequelize;
 
-// 采购 钉钉消息发送模板
-const MARKDOWN_TEMPLATE = `
-# $(h1)
-
-申请事由：$(msg)
-
-期望交付日期：$(date)
-`;
-
 /**
  * 查询我的采购申请
  */
@@ -131,6 +122,9 @@ export const queryMyShenPi = async (params) => {
         temp.createtime = dayjs
             .unix(temp.createtime)
             .format("YYYY-MM-DD HH:mm:ss");
+        temp.updatetime = dayjs
+            .unix(temp.updatetime)
+            .format("YYYY-MM-DD HH:mm:ss");
         return temp;
     });
 
@@ -200,6 +194,9 @@ export const queryMyCopy = async (params) => {
         temp.copys = JSON.parse(item.copys) || [];
         temp.createtime = dayjs
             .unix(temp.createtime)
+            .format("YYYY-MM-DD HH:mm:ss");
+        temp.updatetime = dayjs
+            .unix(temp.updatetime)
             .format("YYYY-MM-DD HH:mm:ss");
         return temp;
     });
@@ -783,6 +780,15 @@ export const addComment = async (params) => {
         title: "采购评论",
     });
 };
+
+// 采购 钉钉消息发送模板
+const MARKDOWN_TEMPLATE = `
+# $(h1)
+
+申请事由：$(msg)
+
+期望交付日期：$(date)
+`;
 
 /**
  * 钉钉发送消息（工作通知）

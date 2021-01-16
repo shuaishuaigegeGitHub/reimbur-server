@@ -226,6 +226,7 @@ export const queryMyShenpi = async (params) => {
             t2.id,
             t1.node_id,
             t1.status,
+            t2.status AS instance_status,
             t2.refext,
             t2.flow_params,
             t2.createtime,
@@ -264,6 +265,9 @@ export const queryMyShenpi = async (params) => {
         temp.applicant = temp.flow_params.b_user_name;
         temp.createtime = dayjs
             .unix(temp.createtime)
+            .format("YYYY-MM-DD HH:mm:ss");
+        temp.updatetime = dayjs
+            .unix(temp.updatetime)
             .format("YYYY-MM-DD HH:mm:ss");
         return temp;
     });
