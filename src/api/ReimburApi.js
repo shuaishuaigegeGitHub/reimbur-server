@@ -32,6 +32,7 @@ router.post("/query-my-baoxiao", async (ctx) => {
 router.post("/query-my-shenpi", async (ctx) => {
     const params = ctx.request.body || {};
     params.id = ctx.state.uid;
+    // params.id = 136;
     const data = await ReimburService.queryMyShenpi(params);
     ctx.renderJson({ msg: "查询成功", data });
 });
