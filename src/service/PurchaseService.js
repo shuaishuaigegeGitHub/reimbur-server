@@ -399,7 +399,6 @@ export const queryInstanceProcessStatus = async (params) => {
     if (lastTask) {
         // 还有未审批的任务，流程未结束
         purchaseProcessList.push({
-            time: dayjs.unix(lastTask.updatetime).format("YYYY-MM-DD HH:mm:ss"),
             username: lastTask.actor_user_name,
             msg: "审批中",
             flag: 2,
