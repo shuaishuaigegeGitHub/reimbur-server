@@ -262,6 +262,7 @@ export default class WorkflowCtl {
             workflowInstance.id,
             workflowTask.node_id
         );
+        params.operator = operator;
         const transaction = await sequelize.transaction();
         try {
             const now = dayjs().unix();
@@ -300,46 +301,6 @@ export default class WorkflowCtl {
             if (!res) {
                 throw new Error("修改流程实例状态为驳回失败");
             }
-            // 报销流程记录
-            await models.reimbur_process.create({
-                w_id: params.id,
-                userid: workflowTask.actor_user_id,
-                username: operator,
-                remark: params.remark,
-                msg: "驳回审批",
-                time: dayjs().format("YYYY-MM-DD HH:mm:ss"),
-                createtime: dayjs().unix(),
-            });
-            // 发送钉钉消息，给申请人和之前的所有人
-            const taskList = await models.workflow_task.findAll({
-                attributes: ["id", "actor_user_id"],
-                where: {
-                    wi_id: workflowInstance.id,
-                },
-                raw: true,
-            });
-            const ids = [workflowInstance.applicant];
-            taskList.forEach((item) => {
-                if (workflowTask.actor_user_id != item.actor_user_id) {
-                    ids.push(item.actor_user_id);
-                }
-            });
-            workflowInstance.flow_params = JSON.parse(
-                workflowInstance.flow_params
-            );
-            sendMessage({
-                userids: ids,
-                title: "报销驳回",
-                h1:
-                    operator +
-                    "驳回了" +
-                    workflowInstance.flow_params.b_user_name +
-                    "的报销申请：" +
-                    params.remark,
-                totalMoney: workflowInstance.flow_params.total_money,
-                date: workflowInstance.flow_params.b_date,
-                remark: workflowInstance.flow_params.remark,
-            });
             await transaction.commit();
         } catch (err) {
             global.logger.error("修改驳回状态失败：%s", err.stack);
@@ -347,34 +308,4 @@ export default class WorkflowCtl {
             throw new GlobalError(600, "驳回失败，请刷新页面重试");
         }
     }
-}
-
-// 报销 钉钉消息发送模板
-const MARKDOWN_TEMPLATE = `
-# $(h1)
-
-申请时间：$(date)
-
-报销总金额：$(totalMoney)
-
-备注：$(remark)
-`;
-
-async function sendMessage({ userids, h1, totalMoney, date, remark, title }) {
-    // 根据系统用户ID获取钉钉用户ID
-    const data = await PermissionService.getDingtalkIdByUserId(userids);
-    const dingtalkUserId = data.map((item) => item.dingding_id).join(",");
-    const content = {
-        msgtype: "action_card",
-        action_card: {
-            title,
-            markdown: MARKDOWN_TEMPLATE.replace("$(h1)", h1)
-                .replace("$(date)", date)
-                .replace("$(totalMoney)", totalMoney)
-                .replace("$(remark)", remark),
-            single_title: "前往查看",
-            single_url: "https://reimbur.feigo.fun/#/reimbur/index",
-        },
-    };
-    DingtalkService.sendMsg(dingtalkUserId, content);
 }

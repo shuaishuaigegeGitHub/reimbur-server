@@ -695,16 +695,16 @@ export const completeBaoXiaoProcess = async (params) => {
  * @param {object} params
  */
 export const rejectBaoXiaoProcess = async (params) => {
-    let res = await models.workflow_task.findOne({
+    let workflowTask = await models.workflow_task.findOne({
         where: {
             id: params.id,
             actor_user_id: params.user_id,
         },
     });
-    if (!res) {
+    if (!workflowTask) {
         throw new GlobalError(500, "找不到流程任务");
     }
-    if (res.updatetime !== params.updatetime) {
+    if (workflowTask.updatetime !== params.updatetime) {
         throw new GlobalError(506, "该流程实例已被编辑过，请刷新页面再审批!");
     }
     await baoXiaoWorkflowCtl.rejectTask(params.id, params.user_name, {
@@ -713,12 +713,12 @@ export const rejectBaoXiaoProcess = async (params) => {
     // 取消后删除 receipt_number 对应的报销发票号数据
     models.reimbur_receipt.destroy({
         where: {
-            w_id: res.wi_id,
+            w_id: workflowTask.wi_id,
         },
     });
     // 记录报销流程信息
     await models.reimbur_process.create({
-        w_id: res.wi_id,
+        w_id: workflowTask.wi_id,
         userid: params.user_id,
         username: params.user_name,
         msg: "驳回报销",
@@ -726,6 +726,37 @@ export const rejectBaoXiaoProcess = async (params) => {
         remark: params.remark,
         time: dayjs().format("YYYY-MM-DD HH:mm:ss"),
         createtime: dayjs().unix(),
+    });
+    const workflowInstance = await models.workflow_instance.findByPk(
+        workflowTask.wi_id
+    );
+    // 发送钉钉消息，给申请人和之前的所有人
+    const taskList = await models.workflow_task.findAll({
+        attributes: ["id", "actor_user_id"],
+        where: {
+            wi_id: workflowInstance.id,
+        },
+        raw: true,
+    });
+    const ids = [workflowInstance.applicant];
+    taskList.forEach((item) => {
+        if (workflowTask.actor_user_id != item.actor_user_id) {
+            ids.push(item.actor_user_id);
+        }
+    });
+    workflowInstance.flow_params = JSON.parse(workflowInstance.flow_params);
+    sendMessage({
+        userids: ids,
+        title: "报销驳回",
+        h1:
+            params.user_name +
+            "驳回了" +
+            workflowInstance.flow_params.b_user_name +
+            "的报销申请：" +
+            params.remark,
+        totalMoney: workflowInstance.flow_params.total_money,
+        date: workflowInstance.flow_params.b_date,
+        remark: workflowInstance.flow_params.remark,
     });
 };
 
