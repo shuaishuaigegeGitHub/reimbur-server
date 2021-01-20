@@ -6,7 +6,6 @@ import { sqlPage } from "../util/sqlPage";
 import { sendMsg } from "@/service/DingtalkService";
 import * as PermissionService from "@/service/PermissionService";
 import NP from "number-precision";
-import { v4 as uuidv4 } from "uuid";
 
 const { models } = sequelize;
 
@@ -84,21 +83,56 @@ export const queryMyPurchase = async (params) => {
         raw: true,
     });
 
+    const ids = data.rows.map((item) => item.id);
+    let reimburCountList = [];
+    if (ids && ids.length) {
+        const sql = `
+            SELECT 
+                p_id,
+                SUM(IF(status=0, 1, 0)) AS unreimbur,
+                SUM(IF(status=1, 1, 0)) AS reimbur
+            FROM purchase_detail
+            WHERE p_id IN (?)
+            GROUP BY p_id
+        `;
+        reimburCountList = await sequelize.query(sql, {
+            replacements: [ids],
+            type: sequelize.QueryTypes.SELECT,
+        });
+    }
+
+    let rows = data.rows.map((item) => {
+        let temp = { ...item };
+        temp.approvers = JSON.parse(item.approvers);
+        temp.copys = JSON.parse(item.copys) || [];
+        temp.images = JSON.parse(item.images) || [];
+        temp.createtime = dayjs
+            .unix(item.createtime)
+            .format("YYYY-MM-DD HH:mm:ss");
+        temp.updatetime = dayjs
+            .unix(item.updatetime)
+            .format("YYYY-MM-DD HH:mm:ss");
+
+        let reimburTemp = reimburCountList.find((reimbur) => {
+            return reimbur.p_id == item.id;
+        });
+        // 初始化报销状态为：未报销
+        temp.reimbur = 0;
+        if (reimburTemp) {
+            if (reimburTemp.reimbur > 0 && reimburTemp.unreimbur == 0) {
+                // 完全报销
+                temp.reimbur = 2;
+            } else if (reimburTemp.reimbur > 0 && reimburTemp.unreimbur > 0) {
+                // 部分报销
+                temp.reimbur = 1;
+            }
+        }
+        return temp;
+    });
+
     return {
         count: data.count,
-        rows: data.rows.map((item) => {
-            let temp = { ...item };
-            temp.approvers = JSON.parse(item.approvers);
-            temp.copys = JSON.parse(item.copys) || [];
-            temp.images = JSON.parse(item.images) || [];
-            temp.createtime = dayjs
-                .unix(item.createtime)
-                .format("YYYY-MM-DD HH:mm:ss");
-            temp.updatetime = dayjs
-                .unix(item.updatetime)
-                .format("YYYY-MM-DD HH:mm:ss");
-            return temp;
-        }),
+        rows: rows,
     };
 };
 
@@ -147,6 +181,22 @@ export const queryMyShenPi = async (params) => {
     let size = params.size || 10;
 
     const data = await sqlPage(sql, replacements, { page, size });
+
+    const ids = data.rows.map((item) => item.id);
+    let reimburCountList = [];
+    if (ids && ids.length) {
+        const sql = `
+            SELECT p_id, COUNT(*) AS total FROM purchase_detail
+            WHERE p_id IN (?)
+            AND status = 1
+            GROUP BY p_id
+        `;
+        reimburCountList = await sequelize.query(sql, {
+            replacements: [ids],
+            type: sequelize.QueryTypes.SELECT,
+        });
+    }
+
     data.rows = data.rows.map((item) => {
         let temp = { ...item };
         temp.images = JSON.parse(item.images) || [];
@@ -154,6 +204,16 @@ export const queryMyShenPi = async (params) => {
         temp.createtime = dayjs
             .unix(temp.createtime)
             .format("YYYY-MM-DD HH:mm:ss");
+
+        let reimburTemp = reimburCountList.find((reimbur) => {
+            return reimbur.p_id == item.id;
+        });
+        if (reimburTemp) {
+            // 是否有采购明细拿去报销
+            temp.reimbur = true;
+        } else {
+            temp.reimbur = false;
+        }
         return temp;
     });
 
@@ -506,7 +566,7 @@ export const queryProcessDetail = async (params) => {
     });
 
     const purchase = await models.purchase.findByPk(params.id, {
-        raw: true
+        raw: true,
     });
 
     if (lastTask) {
@@ -952,6 +1012,16 @@ export const forceRejectPurchase = async (params) => {
         });
         if (!purchase) {
             throw new Error("采购流程不存在");
+        }
+        // purchase_detail 的 status 为 1 表示被拿去报销了，reimburCount > 0 表示有拿去报销的了
+        const reimburCount = await models.purchase_detail.count({
+            where: {
+                p_id: purchaseTask.p_id,
+                status: 1,
+            },
+        });
+        if (reimburCount) {
+            throw new Error("该采购单已被报销，无法驳回");
         }
         const now = dayjs().unix();
         let [res] = await models.purchase_task.update(
