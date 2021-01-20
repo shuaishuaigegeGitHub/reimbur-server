@@ -10,6 +10,36 @@ import { v4 as uuidv4 } from "uuid";
 
 const { models } = sequelize;
 
+// 采购 钉钉消息发送模板
+const MARKDOWN_TEMPLATE = `
+# $(h1)
+
+申请事由：$(msg)
+
+期望交付日期：$(date)
+`;
+
+/**
+ * 钉钉发送消息（工作通知）
+ */
+async function sendMessage({ userid, h1, msg, date, title = "采购审批" }) {
+    // 根据系统用户ID获取钉钉用户ID
+    const data = await PermissionService.getDingtalkIdByUserId(userid);
+    const dingtalkUserId = data.map((item) => item.dingding_id).join(",");
+    const content = {
+        msgtype: "action_card",
+        action_card: {
+            title,
+            markdown: MARKDOWN_TEMPLATE.replace("$(h1)", h1)
+                .replace("$(msg)", msg)
+                .replace("$(date)", date),
+            single_title: "前往查看",
+            single_url: "https://reimbur.feigo.fun/#/reimbur/index",
+        },
+    };
+    sendMsg(dingtalkUserId, content);
+}
+
 /**
  * 查询我的采购申请
  */
@@ -475,6 +505,10 @@ export const queryProcessDetail = async (params) => {
         raw: true,
     });
 
+    const purchase = await models.purchase.findByPk(params.id, {
+        raw: true
+    });
+
     if (lastTask) {
         // 还有未审批的任务，流程未结束
         purchaseProcessList.push({
@@ -482,7 +516,7 @@ export const queryProcessDetail = async (params) => {
             msg: "审批中",
             flag: 2,
         });
-    } else {
+    } else if (purchase.status === 2) {
         // 流程结束
         purchaseProcessList.push({
             username: "",
@@ -720,10 +754,24 @@ export const rejectPurchaseTask = async (params) => {
             { transaction }
         );
         await transaction.commit();
+
+        const purchaseTaskList = await models.purchase_task.findAll({
+            attributes: ["id", "actor_user_id"],
+            where: {
+                p_id: params.id,
+            },
+            raw: true,
+        });
+        const ids = [purchase.applicant];
+        purchaseTaskList.forEach((item) => {
+            if (params.user_id != item.actor_user_id) {
+                ids.push(item.actor_user_id);
+            }
+        });
         // 发送钉钉提醒
         sendMessage({
-            userid: purchase.applicant,
-            h1: "采购申请被驳回",
+            userid: ids,
+            h1: `${purchase.applicant_name}的采购申请被${params.user_name}驳回：${params.remark}`,
             msg: purchase.reasons,
             date: purchase.date,
             title: "采购驳回",
@@ -842,8 +890,8 @@ export const queryLastCopyList = async (user_id) => {
 export const addComment = async (params) => {
     await models.purchase_process.create({
         p_id: params.id,
-        userid: params.userid,
-        username: params.username,
+        userid: params.user_id,
+        username: params.user_name,
         remark: params.remark,
         msg: "添加了评论",
         time: dayjs().format("YYYY-MM-DD HH:mm:ss"),
@@ -858,11 +906,11 @@ export const addComment = async (params) => {
         raw: true,
     });
     const ids = [];
-    if (params.userid != purchase.applicant) {
+    if (params.user_id != purchase.applicant) {
         ids.push(purchase.applicant);
     }
     purchaseTaskList.forEach((item) => {
-        if (params.userid != item.actor_user_id) {
+        if (params.user_id != item.actor_user_id) {
             ids.push(item.actor_user_id);
         }
     });
@@ -876,32 +924,111 @@ export const addComment = async (params) => {
     });
 };
 
-// 采购 钉钉消息发送模板
-const MARKDOWN_TEMPLATE = `
-# $(h1)
-
-申请事由：$(msg)
-
-期望交付日期：$(date)
-`;
-
 /**
- * 钉钉发送消息（工作通知）
+ * 强制驳回采购
  */
-async function sendMessage({ userid, h1, msg, date, title = "采购审批" }) {
-    // 根据系统用户ID获取钉钉用户ID
-    const data = await PermissionService.getDingtalkIdByUserId(userid);
-    const dingtalkUserId = data.map((item) => item.dingding_id).join(",");
-    const content = {
-        msgtype: "action_card",
-        action_card: {
-            title,
-            markdown: MARKDOWN_TEMPLATE.replace("$(h1)", h1)
-                .replace("$(msg)", msg)
-                .replace("$(date)", date),
-            single_title: "前往查看",
-            single_url: "https://reimbur.feigo.fun/#/reimbur/index",
-        },
-    };
-    sendMsg(dingtalkUserId, content);
-}
+export const forceRejectPurchase = async (params) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const purchaseTask = await models.purchase_task.findOne({
+            where: {
+                id: params.id,
+                actor_user_id: params.user_id,
+                status: 2,
+            },
+            raw: true,
+            transaction,
+        });
+        if (!purchaseTask) {
+            throw new Error("采购任务不存在");
+        }
+        const purchase = await models.purchase.findOne({
+            where: {
+                id: purchaseTask.p_id,
+                status: 2,
+            },
+            raw: true,
+            transaction,
+        });
+        if (!purchase) {
+            throw new Error("采购流程不存在");
+        }
+        const now = dayjs().unix();
+        let [res] = await models.purchase_task.update(
+            {
+                status: 4,
+                remark: params.remark,
+                updatetime: now,
+            },
+            {
+                where: {
+                    id: params.id,
+                    actor_user_id: params.user_id,
+                    status: 2,
+                },
+                transaction,
+            }
+        );
+        if (!res) {
+            throw new Error("修改 purchase_task 状态失败【2->4】");
+        }
+        [res] = await models.purchase.update(
+            {
+                status: 4,
+                updatetime: now,
+                update_by: params.user_name,
+            },
+            {
+                where: {
+                    id: purchase.id,
+                    status: 2,
+                },
+                transaction,
+            }
+        );
+        if (!res) {
+            throw new Error("修改 purchase 状态失败【2->4】");
+        }
+        // 记录采购流程信息
+        await models.purchase_process.create(
+            {
+                p_id: purchase.id,
+                username: params.user_name,
+                userid: params.user_id,
+                flag: 4,
+                msg: "强制驳回采购",
+                remark: params.remark,
+                time: dayjs.unix(now).format("YYYY-MM-DD HH:mm:ss"),
+                createtime: now,
+            },
+            { transaction }
+        );
+        await transaction.commit();
+
+        const purchaseTaskList = await models.purchase_task.findAll({
+            attributes: ["id", "actor_user_id"],
+            where: {
+                p_id: params.id,
+            },
+            raw: true,
+        });
+        const ids = [purchase.applicant];
+        purchaseTaskList.forEach((item) => {
+            if (params.user_id != item.actor_user_id) {
+                ids.push(item.actor_user_id);
+            }
+        });
+        // 发送钉钉提醒
+        sendMessage({
+            userid: ids,
+            h1: `${purchase.applicant_name}的采购申请被${params.user_name}强制驳回：${params.remark}`,
+            msg: purchase.reasons,
+            date: purchase.date,
+            title: "采购强制驳回",
+        });
+    } catch (error) {
+        global.logger.error("强制驳回采购任务失败：%s", error.stack);
+        await transaction.rollback();
+        throw new GlobalError(500, "操作失败：" + error.message);
+    }
+};

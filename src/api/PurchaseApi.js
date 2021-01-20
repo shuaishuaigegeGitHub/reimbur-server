@@ -144,10 +144,21 @@ router.get("/last-copy", async (ctx) => {
  */
 router.post("/comment", async (ctx) => {
     const params = ctx.request.body || {};
-    params.userid = ctx.state.uid;
-    params.username = ctx.state.userName;
+    params.user_id = ctx.state.uid;
+    params.user_name = ctx.state.userName;
     await PurchaseService.addComment(params);
     ctx.renderJson({ msg: "查询成功" });
+});
+
+/**
+ * 强制驳回采购（在采购通过后使用，改变状态为驳回）
+ */
+router.post("/force-reject", async (ctx) => {
+    const params = ctx.request.body || {};
+    params.user_id = ctx.state.uid;
+    params.user_name = ctx.state.userName;
+    await PurchaseService.forceRejectPurchase(params);
+    ctx.renderJson({ msg: "操作成功" });
 });
 
 export default router;
