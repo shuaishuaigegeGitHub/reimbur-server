@@ -5,6 +5,8 @@ import dayjs from "dayjs";
 import { sqlPage } from "../util/sqlPage";
 import { sendMsg } from "@/service/DingtalkService";
 import * as PermissionService from "@/service/PermissionService";
+import NP from "number-precision";
+import { v4 as uuidv4 } from "uuid";
 
 const { models } = sequelize;
 
@@ -38,8 +40,8 @@ export const queryMyPurchase = async (params) => {
             "reasons",
             "approvers",
             "copys",
-            "detail",
             "images",
+            "total_money",
             "remark",
             "createtime",
             "update_by",
@@ -58,7 +60,6 @@ export const queryMyPurchase = async (params) => {
             let temp = { ...item };
             temp.approvers = JSON.parse(item.approvers);
             temp.copys = JSON.parse(item.copys) || [];
-            temp.detail = JSON.parse(item.detail);
             temp.images = JSON.parse(item.images) || [];
             temp.createtime = dayjs
                 .unix(item.createtime)
@@ -84,7 +85,7 @@ export const queryMyShenPi = async (params) => {
             t2.remark,
             t2.date,
             t1.status,
-            t2.detail,
+            t2.total_money,
             t2.images,
             t2.copys,
             t2.createtime,
@@ -118,7 +119,6 @@ export const queryMyShenPi = async (params) => {
     const data = await sqlPage(sql, replacements, { page, size });
     data.rows = data.rows.map((item) => {
         let temp = { ...item };
-        temp.detail = JSON.parse(item.detail);
         temp.images = JSON.parse(item.images) || [];
         temp.copys = JSON.parse(item.copys) || [];
         temp.createtime = dayjs
@@ -158,7 +158,7 @@ export const queryMyCopy = async (params) => {
             reasons,
             approvers,
             copys,
-            detail,
+            total_money,
             images,
             remark,
             createtime,
@@ -188,7 +188,6 @@ export const queryMyCopy = async (params) => {
     const data = await sqlPage(sql, replacements, { page, size });
     data.rows = data.rows.map((item) => {
         let temp = { ...item };
-        temp.detail = JSON.parse(item.detail);
         temp.images = JSON.parse(item.images) || [];
         temp.copys = JSON.parse(item.copys) || [];
         temp.createtime = dayjs
@@ -219,18 +218,33 @@ export const submit = async (params) => {
             createtime: now,
             updatetime: now,
         };
+        const details = params.detail;
         params.approvers = JSON.stringify(params.approvers);
         // 取出抄送人ID列表
         params.copy_ids = params.copys.map((item) => item.id).join(",");
         params.copys = JSON.stringify(params.copys);
-        params.detail = JSON.stringify(params.detail);
         params.images = JSON.stringify(params.images);
         params.createtime = now;
         params.updatetime = now;
+
+        // 计算总价格
+        params.total_money = params.detail
+            .map((item) => NP.round(NP.times(item.money, item.number), 2))
+            .reduce((prev, cur) => {
+                return NP.round(NP.plus(prev, cur), 2);
+            }, 0);
+
         let temp = await models.purchase.create(params, { transaction });
 
         purchaseTask.p_id = temp.id;
         await models.purchase_task.create(purchaseTask, { transaction });
+
+        details.forEach((item, index) => {
+            item.index = index;
+            item.p_id = temp.id;
+        });
+
+        await models.purchase_detail.bulkCreate(details, { transaction });
 
         // 记录采购流程信息
         await models.purchase_process.create(
@@ -276,25 +290,25 @@ export const edit = async (params) => {
         updatetime: now,
     };
 
+    const details = params.detail;
+
     params.approvers = JSON.stringify(params.approvers);
     // 取出抄送人ID列表
     params.copy_ids = params.copys.map((item) => item.id).join(",");
     params.copys = JSON.stringify(params.copys);
-    params.detail = JSON.stringify(params.detail);
     params.images = JSON.stringify(params.images);
     params.updatetime = now;
+    params.status = 1;
+    // 计算总价格
+    params.total_money = params.detail
+        .map((item) => NP.round(NP.times(item.money, item.number), 2))
+        .reduce((prev, cur) => {
+            return NP.round(NP.plus(prev, cur), 2);
+        }, 0);
 
     const transaction = await sequelize.transaction();
 
     try {
-        const purchaseTaskCount = await models.purchase_task.count(
-            {
-                where: {
-                    p_id: params.id,
-                },
-            },
-            { transaction }
-        );
         const purchase = await models.purchase.findByPk(params.id, {
             raw: true,
             transaction,
@@ -303,41 +317,44 @@ export const edit = async (params) => {
             // 流程已结束，不能编辑
             throw new Error("该流程已通过无法编辑");
         }
-        // 发送钉钉消息的数据
-        let dingtalkMsg = null;
-        if (purchase.status == 1 && purchaseTaskCount === 1) {
-            // 说明刚提交，还没有被任何人审批过
-            // 删除原本对应的采购审批任务数据
-            await models.purchase_task.destroy({
-                where: {
-                    p_id: params.id,
-                },
-                transaction,
-            });
-        } else {
-            // 被驳回后，或者取消后重新编辑
-            await models.purchase_process.create(
-                {
-                    p_id: params.id,
-                    username: purchase.applicant_name,
-                    userid: purchase.applicant,
-                    msg: "重新编辑了采购申请",
-                    flag: 1,
-                    time: dayjs.unix(now).format("YYYY-MM-DD HH:mm:ss"),
-                    createtime: now,
-                },
-                { transaction }
-            );
-            params.status = 1;
-            // 修改purchase的状态
-            // 钉钉提醒
-            dingtalkMsg = {
-                userid: [purchaseTask.actor_user_id],
-                h1: params.applicant_name + "重新编辑了采购申请",
-                msg: params.reasons,
-                date: params.date,
-            };
+        // 明细是否有被报销
+        const reimburCount = await models.purchase_detail.count({
+            where: {
+                p_id: params.id,
+                status: 1,
+            },
+            transaction,
+        });
+        if (reimburCount) {
+            // 流程已结束，不能编辑
+            throw new Error("该采购已被报销，无法编辑");
         }
+        // 删除原本对应的采购审批任务数据
+        await models.purchase_task.destroy({
+            where: {
+                p_id: params.id,
+            },
+            transaction,
+        });
+        await models.purchase_process.create(
+            {
+                p_id: params.id,
+                username: purchase.applicant_name,
+                userid: purchase.applicant,
+                msg: "重新编辑了采购申请",
+                flag: 1,
+                time: dayjs.unix(now).format("YYYY-MM-DD HH:mm:ss"),
+                createtime: now,
+            },
+            { transaction }
+        );
+        // 钉钉提醒
+        let dingtalkMsg = {
+            userid: [purchaseTask.actor_user_id],
+            h1: params.applicant_name + "重新编辑了采购申请",
+            msg: params.reasons,
+            date: params.date,
+        };
         // 更新采购信息表
         await models.purchase.update(params, {
             where: {
@@ -348,6 +365,19 @@ export const edit = async (params) => {
         });
         // 新增采购任务表
         await models.purchase_task.create(purchaseTask, { transaction });
+        // 删除明细表，并且新建明细
+        await models.purchase_detail.destroy({
+            where: {
+                p_id: params.id,
+            },
+            transaction,
+        });
+        details.forEach((item, index) => {
+            item.index = index;
+            item.p_id = params.id;
+            item.status = 0;
+        });
+        await models.purchase_detail.bulkCreate(details, { transaction });
         await transaction.commit();
         if (dingtalkMsg) {
             // 发送钉钉提醒
@@ -422,9 +452,9 @@ export const cancelPurchase = async (params) => {
 };
 
 /**
- * 查询采购实例流程状态
+ * 查询采购流程数据和明细数据
  */
-export const queryInstanceProcessStatus = async (params) => {
+export const queryProcessDetail = async (params) => {
     const purchaseProcessList = await models.purchase_process.findAll({
         where: {
             p_id: params.id,
@@ -452,9 +482,27 @@ export const queryInstanceProcessStatus = async (params) => {
             msg: "审批中",
             flag: 2,
         });
+    } else {
+        // 流程结束
+        purchaseProcessList.push({
+            username: "",
+            msg: "采购流程结束",
+            flag: 1,
+        });
     }
 
-    return purchaseProcessList;
+    // 查询明细数据
+    const details = await models.purchase_detail.findAll({
+        where: {
+            p_id: params.id,
+        },
+        order: [["index", "ASC"]],
+    });
+
+    return {
+        actList: purchaseProcessList,
+        details,
+    };
 };
 
 /**
@@ -466,18 +514,24 @@ export const queryInstance = async (id) => {
             "id",
             "date",
             "reasons",
-            "detail",
             "approvers",
             "copys",
+            "total_money",
             "remark",
             "images",
         ],
         raw: true,
     });
-    data.detail = JSON.parse(data.detail);
     data.approvers = JSON.parse(data.approvers);
     data.copys = JSON.parse(data.copys) || [];
     data.images = JSON.parse(data.images) || [];
+    data.detail = await models.purchase_detail.findAll({
+        where: {
+            p_id: id,
+        },
+        raw: true,
+        order: [["index", "ASC"]],
+    });
     return data;
 };
 
@@ -596,20 +650,6 @@ export const completePurchaseTask = async (params) => {
             },
             { transaction }
         );
-        if (purchaseTask.stage >= purchase.approvers.length) {
-            // 流程结束，记录采购流程信息
-            await models.purchase_process.create(
-                {
-                    p_id: purchase.id,
-                    username: "",
-                    userid: 0,
-                    msg: "采购流程结束",
-                    time: dayjs().format("YYYY-MM-DD HH:mm:ss"),
-                    createtime: dayjs().unix(),
-                },
-                { transaction }
-            );
-        }
         await transaction.commit();
         if (sendDingdingMsg) {
             sendMessage(sendDingdingMsg);
@@ -742,15 +782,22 @@ export const queryInstanceToReimbur = async (id, applicant) => {
     });
     let result = null;
     if (purchase) {
+        let detail = await models.purchase_detail.findAll({
+            where: {
+                p_id: id,
+            },
+            raw: true,
+            order: [["index", "ASC"]],
+        });
         const date = dayjs().format("YYYY-MM-DD");
-        let detail = JSON.parse(purchase.detail);
         detail = detail.map((item) => {
             return {
+                id: item.id,
                 name: item.name,
                 money: item.money,
                 number: item.number,
                 unit: item.unit,
-                subject_id: item.subject_id,
+                subject_id: null,
                 remark: "",
             };
         });

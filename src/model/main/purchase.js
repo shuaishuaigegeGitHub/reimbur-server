@@ -27,9 +27,9 @@ export default (sequelize) => {
                 type: Sequelize.STRING(255),
                 comment: "采购事由",
             },
-            detail: {
-                type: Sequelize.TEXT,
-                comment: "采购明细",
+            total_money: {
+                type: Sequelize.DECIMAL,
+                comment: "总价格",
             },
             approvers: {
                 type: Sequelize.STRING,

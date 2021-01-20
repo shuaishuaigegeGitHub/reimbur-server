@@ -82,11 +82,11 @@ router.post("/cancel", async (ctx) => {
 });
 
 /**
- * 查询采购实例流程状态
+ * 查询采购流程数据和明细数据
  */
-router.get("/query-instance-process-status", async (ctx) => {
+router.get("/query-process-detail", async (ctx) => {
     const params = ctx.request.query || {};
-    const data = await PurchaseService.queryInstanceProcessStatus(params);
+    const data = await PurchaseService.queryProcessDetail(params);
     ctx.renderJson({ msg: "查询成功", data });
 });
 
