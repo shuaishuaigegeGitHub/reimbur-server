@@ -59,7 +59,10 @@ export const sendMsg = async (userid, msg) => {
         },
     });
     if (data.errcode) {
-        global.logger.error("发送工作通知异常：%s", data.errmsg);
+        global.logger.error(
+            `发送工作通知异常：【code：${data.errcode}，msg：%s】`,
+            data.errmsg
+        );
         throw new Error(data.errmsg);
     }
 };
