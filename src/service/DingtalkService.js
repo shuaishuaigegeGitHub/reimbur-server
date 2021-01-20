@@ -58,6 +58,7 @@ export const sendMsg = async (userid, msg) => {
             msg,
         },
     });
+    global.logger.info("发送的消息：%J", msg);
     if (data.errcode) {
         global.logger.error(
             `发送工作通知异常：【code：${data.errcode}，msg：%s】`,
