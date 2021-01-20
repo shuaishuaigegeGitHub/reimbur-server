@@ -893,6 +893,7 @@ export const queryInstanceToReimbur = async (id, applicant) => {
         let detail = await models.purchase_detail.findAll({
             where: {
                 p_id: id,
+                status: 0,
             },
             raw: true,
             order: [["index", "ASC"]],

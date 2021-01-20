@@ -432,10 +432,15 @@ export const startBaoXiaoProcess = async (params, user) => {
     const { userid, username } = user;
     // 发票号列表
     let receiptNumberList = [];
+    // 采购ID
+    const purchaseIdList = [];
     params.detailList.forEach((detail) => {
         if (detail.receipt_number) {
             let arr = detail.receipt_number.split("，");
             receiptNumberList = receiptNumberList.concat(arr);
+        }
+        if (detail.id) {
+            purchaseIdList.push(detail.id);
         }
     });
     // 抄送人列表
@@ -462,6 +467,19 @@ export const startBaoXiaoProcess = async (params, user) => {
         username,
         params.b_user_id
     );
+    if (purchaseIdList.length) {
+        // 把对应的采购数据设置为已报销
+        await models.purchase_detail.update(
+            {
+                status: 1,
+            },
+            {
+                where: {
+                    id: purchaseIdList,
+                },
+            }
+        );
+    }
     // 记录报销流程信息
     await models.reimbur_process.create({
         w_id: instance.id,
@@ -484,7 +502,7 @@ export const startBaoXiaoProcess = async (params, user) => {
     if (copys) {
         let temp = copys.map((item) => item.id);
         // 有选择抄送人，则记录一下
-        await models.workflow_copy.create({
+        models.workflow_copy.create({
             id: instance.id,
             copys: JSON.stringify(copys),
             copy_ids: JSON.stringify(temp),
