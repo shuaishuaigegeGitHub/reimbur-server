@@ -91,42 +91,98 @@ async function findEditableById(params) {
  */
 export const editProcess = async (params) => {
     await findEditableById(params);
-    let res = await models.workflow_instance.update(
-        {
-            flow_params: JSON.stringify(params.flow_params),
-            updatetime: dayjs().unix(),
-        },
-        {
-            where: {
-                id: params.id,
-            },
-        }
-    );
-    if (!res) {
-        throw new GlobalError(501, "修改失败，请稍后重试");
-    }
-    let copys = params.flow_params.copys;
-    let temp = copys.map((item) => item.id);
-    // 有选择抄送人，则记录一下
-    let data = await models.workflow_copy.findByPk(params.id);
-    if (data) {
-        await models.workflow_copy.update(
+    const transaction = await sequelize.transaction();
+    try {
+        // 发票号列表
+        let receiptNumberList = [];
+        params.flow_params.detailList.forEach((detail) => {
+            if (detail.receipt_number) {
+                let arr = detail.receipt_number.split("，");
+                receiptNumberList = receiptNumberList.concat(arr);
+            }
+        });
+        let res = await models.workflow_instance.update(
             {
-                copys: JSON.stringify(copys),
-                copy_ids: JSON.stringify(temp),
+                flow_params: JSON.stringify(params.flow_params),
+                updatetime: dayjs().unix(),
             },
             {
                 where: {
                     id: params.id,
                 },
+                transaction,
             }
         );
-    } else {
-        await models.workflow_copy.create({
-            id: params.id,
-            copys: JSON.stringify(copys),
-            copy_ids: JSON.stringify(temp),
+        if (!res) {
+            throw new GlobalError(501, "修改失败，请稍后重试");
+        }
+
+        await models.reimbur_receipt.destroy({
+            where: {
+                w_id: params.id,
+            },
+            transaction,
         });
+
+        if (receiptNumberList.length) {
+            // 检验发票号是否已经被使用
+            const exists = await models.reimbur_receipt.findAll({
+                where: {
+                    receipt_number: receiptNumberList,
+                },
+                transaction,
+                raw: true,
+            });
+            if (exists.length) {
+                let list = exists.map((item) => item.receipt_number);
+                throw new GlobalError(
+                    506,
+                    `发票号【${list.join("、")}】已经被使用了`
+                );
+            }
+            // 把发票号存到 reimbur_receive 表
+            let arr = receiptNumberList.map((item) => {
+                return {
+                    receipt_number: item,
+                    w_id: params.id,
+                };
+            });
+            await models.reimbur_receipt.bulkCreate(arr, { transaction });
+        }
+
+        let copys = params.flow_params.copys;
+        let temp = copys.map((item) => item.id);
+        // 有选择抄送人，则记录一下
+        let data = await models.workflow_copy.findByPk(params.id, {
+            transaction,
+        });
+        if (data) {
+            await models.workflow_copy.update(
+                {
+                    copys: JSON.stringify(copys),
+                    copy_ids: JSON.stringify(temp),
+                },
+                {
+                    where: {
+                        id: params.id,
+                    },
+                    transaction,
+                }
+            );
+        } else {
+            await models.workflow_copy.create(
+                {
+                    id: params.id,
+                    copys: JSON.stringify(copys),
+                    copy_ids: JSON.stringify(temp),
+                },
+                { transaction }
+            );
+        }
+        await transaction.commit();
+    } catch (error) {
+        await transaction.rollback();
+        throw new GlobalError(500, error.message);
     }
 };
 
@@ -602,7 +658,7 @@ export const cancelBaoXiaoProcess = async (params) => {
         throw new GlobalError(500, "缺少参数");
     }
     let instance = await models.workflow_instance.findOne({
-        attributes: ["id", "status"],
+        attributes: ["id", "status", "flow_params"],
         where: {
             id: params.id,
             applicant: params.user_id,
@@ -675,6 +731,24 @@ export const cancelBaoXiaoProcess = async (params) => {
             },
             transaction,
         });
+        const flowParams = JSON.parse(instance.flow_params);
+        let ids = flowParams.detailList
+            .map((item) => item.id)
+            .filter((item) => item);
+        if (ids.length) {
+            // 把原本采购明细的报销状态修改为未报销
+            await models.purchase_detail.update(
+                {
+                    status: 0,
+                },
+                {
+                    where: {
+                        id: ids,
+                    },
+                    transaction,
+                }
+            );
+        }
         await transaction.commit();
     } catch (err) {
         global.logger.error("取消报销流程【%d】失败：%s", params.id, err.stack);
@@ -755,8 +829,17 @@ export const rejectBaoXiaoProcess = async (params) => {
         createtime: dayjs().unix(),
     });
     const workflowInstance = await models.workflow_instance.findByPk(
-        workflowTask.wi_id
+        workflowTask.wi_id,
+        {
+            raw: true,
+        }
     );
+    // 取消后删除 receipt_number 对应的报销发票号数据
+    await models.reimbur_receipt.destroy({
+        where: {
+            w_id: workflowInstance.id,
+        },
+    });
     // 发送钉钉消息，给申请人和之前的所有人
     const taskList = await models.workflow_task.findAll({
         attributes: ["id", "actor_user_id"],
@@ -772,6 +855,23 @@ export const rejectBaoXiaoProcess = async (params) => {
         }
     });
     workflowInstance.flow_params = JSON.parse(workflowInstance.flow_params);
+
+    let purchaseIds = workflowInstance.flow_params.detailList
+        .map((item) => item.id)
+        .filter((item) => item);
+    if (purchaseIds.length) {
+        // 把原本采购明细的报销状态修改为未报销
+        models.purchase_detail.update(
+            {
+                status: 0,
+            },
+            {
+                where: {
+                    id: purchaseIds,
+                },
+            }
+        );
+    }
     sendMessage({
         userids: ids,
         title: "报销驳回",
