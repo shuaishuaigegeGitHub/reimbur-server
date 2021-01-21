@@ -1,8 +1,8 @@
 import Sequelize from "sequelize";
 
 export default (sequelize) => {
-    let cbc_bank_bill_detail = sequelize.define(
-        "cbc_bank_bill_detail",
+    let bank_bill_detail = sequelize.define(
+        "bank_bill_detail",
         {
             id: {
                 type: Sequelize.BIGINT(20),
@@ -10,9 +10,17 @@ export default (sequelize) => {
                 primaryKey: true,
                 autoIncrement: true,
             },
+            cb_id: {
+                type: Sequelize.INTEGER,
+                comment: "公司主体ID(company_body的ID)",
+            },
             bank_bill_id: {
                 type: Sequelize.INTEGER,
-                comment: "银行账单ID，对应cbc_bank_bill的id",
+                comment: "银行账单ID",
+            },
+            tb_id: {
+                type: Sequelize.INTEGER,
+                comment: "腾讯账单ID(tencent_bill的ID)，有则表示是腾讯账单核销",
             },
             day: {
                 type: Sequelize.STRING(20),
@@ -56,10 +64,10 @@ export default (sequelize) => {
             },
         },
         {
-            tableName: "cbc_bank_bill_detail",
+            tableName: "bank_bill_detail",
             createdAt: "createtime",
             updatedAt: "updatetime",
         }
     );
-    return cbc_bank_bill_detail;
+    return bank_bill_detail;
 };

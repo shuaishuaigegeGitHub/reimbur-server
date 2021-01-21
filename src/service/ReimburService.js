@@ -17,6 +17,7 @@ import * as SystemService from "./SystemService";
 import { sqlPage } from "../util/sqlPage";
 import * as PermissionService from "@/service/PermissionService";
 import * as DingtalkService from "@/service/DingtalkService";
+import NP from "number-precision";
 
 const { models } = sequelize;
 
@@ -951,13 +952,13 @@ export const finishTask = async (refext) => {
     });
 
     // 招商银行账单
-    let cbcBankBill = await models.cbc_bank_bill.findOne({
+    let bankBill = await models.bank_bill.findOne({
         where: {
-            trsref: refext,
+            busref: refext,
             status: 1,
         },
     });
-    if (!cbcBankBill) {
+    if (!bankBill) {
         throw new Error(`找不到招商银行账单【${refext}】`);
     }
 
@@ -970,16 +971,16 @@ export const finishTask = async (refext) => {
         let settleList = [];
         settleList.push({
             settle_id: settleId,
-            day: cbcBankBill.trsdat,
-            bank_bill_id: cbcBankBill.id,
-            our_account_name: cbcBankBill.eacnam,
-            our_account: cbcBankBill.eacnbr,
-            other_account_name: cbcBankBill.relnam,
-            other_account: cbcBankBill.relacc,
+            day: bankBill.day,
+            bank_bill_id: bankBill.id,
+            our_account_name: bankBill.account_name,
+            our_account: bankBill.account,
+            other_account_name: bankBill.other_account_name,
+            other_account: bankBill.other_account,
             type: 0,
-            trsamt: cbcBankBill.trsamt,
-            summary: cbcBankBill.txtclt,
-            remark: cbcBankBill.remark,
+            trsamt: bankBill.debit_money,
+            summary: bankBill.summary,
+            remark: bankBill.remark,
             subject_id: PAYMENT_SUBJECT_ID,
             createtime: now,
         });
@@ -1004,13 +1005,13 @@ export const finishTask = async (refext) => {
 
         const transaction = await sequelize.transaction();
         try {
-            let res = await models.cbc_bank_bill.update(
+            let res = await models.bank_bill.update(
                 {
                     status: 2,
                 },
                 {
                     where: {
-                        id: cbcBankBill.id,
+                        id: bankBill.id,
                         status: 1,
                     },
                     transaction,
@@ -1020,7 +1021,7 @@ export const finishTask = async (refext) => {
                 throw new Error("修改招商银行账单状态失败");
             }
             for (let settle of settleList) {
-                await models.cbc_bank_settle.create(settle, { transaction });
+                await models.bank_settle.create(settle, { transaction });
             }
             // 请求商务系统的结算接口
             let settleParams = flowParams.detailList.map((item) => {
@@ -1041,9 +1042,10 @@ export const finishTask = async (refext) => {
     } else {
         for (let detail of flowParams.detailList) {
             let bankBillDetail = {
-                bank_bill_id: cbcBankBill.id,
+                cb_id: bankBill.cb_id,
+                bank_bill_id: bankBill.id,
                 day: flowParams.b_date,
-                money: detail.money * detail.number,
+                money: NP.round(NP.times(detail.money, detail.number), 2),
                 summary: detail.name,
                 remark: detail.remark,
                 subject: detail.subject_id,
@@ -1052,18 +1054,18 @@ export const finishTask = async (refext) => {
                 create_by: "系统自动结算",
                 update_by: "系统自动结算",
             };
-            bankBillDetail = await models.cbc_bank_bill_detail.create(
+            bankBillDetail = await models.bank_bill_detail.create(
                 bankBillDetail
             );
         }
         // 修改招商银行账单状态为已结算
-        await models.cbc_bank_bill.update(
+        await models.bank_bill.update(
             {
                 status: 3,
             },
             {
                 where: {
-                    id: cbcBankBill.id,
+                    id: bankBill.id,
                 },
             }
         );
