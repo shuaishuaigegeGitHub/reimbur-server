@@ -6,6 +6,7 @@ import { sqlPage } from "../util/sqlPage";
 import { sendMsg } from "@/service/DingtalkService";
 import * as PermissionService from "@/service/PermissionService";
 import NP from "number-precision";
+import { v4 as uuidv4 } from "uuid";
 
 const { models } = sequelize;
 
@@ -500,6 +501,12 @@ function validate(params) {
     if (!params.reasons) {
         throw new GlobalError(500, "缺少申请事由");
     }
+    // 生成唯一的UUID
+    params.detail.forEach((item) => {
+        if (!item.id) {
+            item.id = uuidv4();
+        }
+    });
 }
 
 /**
