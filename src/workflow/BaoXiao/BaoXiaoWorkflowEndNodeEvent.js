@@ -30,7 +30,7 @@ export default class BaoXiaoWorkflowEndNodeEvent extends WorkflowEndNodeEvent {
             h1: "报销申请已通过",
             totalMoney: workflowInstance.flow_params.total_money,
             date: workflowInstance.flow_params.b_date,
-            remark: workflowInstance.flow_params.remark,
+            remark: workflowInstance.flow_params.remark || "",
         });
         // 发给抄送人消息
         let copys = workflowInstance.flow_params.copys || [];
@@ -43,7 +43,7 @@ export default class BaoXiaoWorkflowEndNodeEvent extends WorkflowEndNodeEvent {
                 title: "报销抄送",
                 totalMoney: workflowInstance.flow_params.total_money,
                 date: workflowInstance.flow_params.b_date,
-                remark: workflowInstance.flow_params.remark,
+                remark: workflowInstance.flow_params.remark || "",
             });
         }
     }

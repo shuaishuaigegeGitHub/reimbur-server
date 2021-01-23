@@ -883,7 +883,7 @@ export const rejectBaoXiaoProcess = async (params) => {
             params.remark,
         totalMoney: workflowInstance.flow_params.total_money,
         date: workflowInstance.flow_params.b_date,
-        remark: workflowInstance.flow_params.remark,
+        remark: workflowInstance.flow_params.remark || "",
     });
 };
 
@@ -964,7 +964,7 @@ export const transfer = async (params) => {
             // 转账金额
             money: trsamt,
             // 摘要
-            summary: "报销款",
+            summary: params.remark || "报销款",
             // 收方银行
             bankName: data.flow_params.bank_name,
             // 收方开户行地址
@@ -1248,7 +1248,7 @@ export const addComment = async (params) => {
             h1: params.username + " 评论：" + params.remark,
             totalMoney: workflowInstance.flow_params.total_money,
             date: workflowInstance.flow_params.b_date,
-            remark: workflowInstance.flow_params.remark,
+            remark: workflowInstance.flow_params.remark || "",
         });
     }
 };
