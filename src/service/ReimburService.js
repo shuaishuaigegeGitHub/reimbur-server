@@ -93,14 +93,6 @@ export const editProcess = async (params) => {
     await findEditableById(params);
     const transaction = await sequelize.transaction();
     try {
-        // 发票号列表
-        let receiptNumberList = [];
-        params.flow_params.detailList.forEach((detail) => {
-            if (detail.receipt_number) {
-                let arr = detail.receipt_number.split("，");
-                receiptNumberList = receiptNumberList.concat(arr);
-            }
-        });
         let res = await models.workflow_instance.update(
             {
                 flow_params: JSON.stringify(params.flow_params),
@@ -123,32 +115,6 @@ export const editProcess = async (params) => {
             },
             transaction,
         });
-
-        if (receiptNumberList.length) {
-            // 检验发票号是否已经被使用
-            const exists = await models.reimbur_receipt.findAll({
-                where: {
-                    receipt_number: receiptNumberList,
-                },
-                transaction,
-                raw: true,
-            });
-            if (exists.length) {
-                let list = exists.map((item) => item.receipt_number);
-                throw new GlobalError(
-                    506,
-                    `发票号【${list.join("、")}】已经被使用了`
-                );
-            }
-            // 把发票号存到 reimbur_receive 表
-            let arr = receiptNumberList.map((item) => {
-                return {
-                    receipt_number: item,
-                    w_id: params.id,
-                };
-            });
-            await models.reimbur_receipt.bulkCreate(arr, { transaction });
-        }
 
         let copys = params.flow_params.copys;
         let temp = copys.map((item) => item.id);
@@ -487,37 +453,15 @@ export const queryInstanceProcessStatus = async (id) => {
 export const startBaoXiaoProcess = async (params, user) => {
     validateParams(params);
     const { userid, username } = user;
-    // 发票号列表
-    let receiptNumberList = [];
     // 采购ID
     const purchaseIdList = [];
     params.detailList.forEach((detail) => {
-        if (detail.receipt_number) {
-            let arr = detail.receipt_number.split("，");
-            receiptNumberList = receiptNumberList.concat(arr);
-        }
         if (detail.id) {
             purchaseIdList.push(detail.id);
         }
     });
     // 抄送人列表
     const copys = params.copys;
-    if (receiptNumberList.length) {
-        // 检验发票号是否已经被使用
-        const exists = await models.reimbur_receipt.findAll({
-            where: {
-                receipt_number: receiptNumberList,
-            },
-            raw: true,
-        });
-        if (exists.length) {
-            let list = exists.map((item) => item.receipt_number);
-            throw new GlobalError(
-                506,
-                `发票号【${list.join("、")}】已经被使用了`
-            );
-        }
-    }
     const instance = await baoXiaoWorkflowCtl.startProcess(
         BAOXIAO_KEY,
         params,
@@ -546,16 +490,6 @@ export const startBaoXiaoProcess = async (params, user) => {
         time: dayjs().format("YYYY-MM-DD HH:mm:ss"),
         createtime: dayjs().unix(),
     });
-    if (receiptNumberList.length) {
-        // 把发票号存到 reimbur_receive 表
-        let arr = receiptNumberList.map((item) => {
-            return {
-                receipt_number: item,
-                w_id: instance.id,
-            };
-        });
-        models.reimbur_receipt.bulkCreate(arr);
-    }
     if (copys) {
         let temp = copys.map((item) => item.id);
         // 有选择抄送人，则记录一下
@@ -724,13 +658,6 @@ export const cancelBaoXiaoProcess = async (params) => {
             },
             { transaction }
         );
-        // 取消后删除 receipt_number 对应的报销发票号数据
-        await models.reimbur_receipt.destroy({
-            where: {
-                w_id: instance.id,
-            },
-            transaction,
-        });
         const flowParams = JSON.parse(instance.flow_params);
         let ids = flowParams.detailList
             .map((item) => item.id)
@@ -811,12 +738,6 @@ export const rejectBaoXiaoProcess = async (params) => {
     await baoXiaoWorkflowCtl.rejectTask(params.id, params.user_name, {
         remark: params.remark,
     });
-    // 取消后删除 receipt_number 对应的报销发票号数据
-    models.reimbur_receipt.destroy({
-        where: {
-            w_id: workflowTask.wi_id,
-        },
-    });
     // 记录报销流程信息
     await models.reimbur_process.create({
         w_id: workflowTask.wi_id,
@@ -834,12 +755,6 @@ export const rejectBaoXiaoProcess = async (params) => {
             raw: true,
         }
     );
-    // 取消后删除 receipt_number 对应的报销发票号数据
-    await models.reimbur_receipt.destroy({
-        where: {
-            w_id: workflowInstance.id,
-        },
-    });
     // 发送钉钉消息，给申请人和之前的所有人
     const taskList = await models.workflow_task.findAll({
         attributes: ["id", "actor_user_id"],
