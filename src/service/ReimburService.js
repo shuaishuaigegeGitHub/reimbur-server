@@ -943,6 +943,24 @@ export const saveSubject = async (params) => {
 };
 
 /**
+ * 保存科目
+ */
+export const saveReceipt = async (params) => {
+    for (let item of params) {
+        await models.reimbur_detail.update(
+            {
+                receipt_number: item.receipt_number,
+            },
+            {
+                where: {
+                    id: item.id,
+                },
+            }
+        );
+    }
+};
+
+/**
  * 出纳打款
  */
 export const transfer = async (params) => {
