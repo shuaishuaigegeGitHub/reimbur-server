@@ -1,5 +1,5 @@
 import sequelize from "../model/index";
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 import GlobalError from "@/common/GlobalError";
 import dayjs from "dayjs";
 import { sqlPage } from "../util/sqlPage";
@@ -908,7 +908,7 @@ export const queryInstanceToReimbur = async (id, applicant) => {
         const date = dayjs().format("YYYY-MM-DD");
         detail = detail.map((item) => {
             return {
-                id: item.id,
+                pd_id: item.id,
                 name: item.name,
                 money: item.money,
                 number: item.number,
@@ -918,18 +918,15 @@ export const queryInstanceToReimbur = async (id, applicant) => {
             };
         });
         result = {
-            a_user_id: applicant,
-            a_date: date,
-            b_user_id: applicant,
-            b_date: date,
-            apply_type: "正常请款",
-            pay_type: "银行转账",
-            bank_name: "招商银行",
+            p_id: id,
+            date: date,
+            apply_type: 1,
+            pay_type: 1,
+            bank_name: "",
             bank_account: "",
             bank_address: "",
             payee: "",
             detailList: detail,
-            copys: [],
         };
     }
     return result;

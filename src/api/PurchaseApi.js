@@ -6,7 +6,7 @@ const router = new Router({
 });
 
 /**
- * 查询我的报销
+ * 查询我的采购
  */
 router.post("/query-my-purchase", async (ctx) => {
     const params = ctx.request.body || {};
