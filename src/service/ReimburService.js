@@ -361,6 +361,77 @@ export const queryApprove = async (params) => {
 };
 
 /**
+ * 抄送给我
+ */
+export const queryCopyToMe = async (params) => {
+    const { userid, applyTime, page = 1, size = 10 } = params;
+    let countSql = `
+        SELECT COUNT(*) AS \`count\`
+        FROM reimbur_task t1
+        LEFT JOIN reimbur t2 ON t1.r_id = t2.id
+        WHERE t1.act_user_id = ?
+    `;
+    let dataSql = `
+        SELECT 
+            t2.id,
+            t2.p_id,
+            t2.applicant,
+            t2.applicant_name,
+            t2.applicant_dept,
+            t2.applicant_dept_name,
+            t2.apply_type,
+            t2.bank_address,
+            t2.bank_address,
+            t2.bank_name,
+            t2.bank_account,
+            t2.date,
+            t2.payee,
+            t2.pay_type,
+            t2.stage,
+            t2.status,
+            t2.reason,
+            t2.status,
+            t2.total_money,
+            t2.create_by,
+            t2.create_id,
+            t2.createtime,
+            t2.create_dept_id,
+            t2.create_dept_name,
+            t2.updatetime,
+            t2.refext,
+            t2.update_by,
+            t2.updatetime
+        FROM reimbur_copy t1
+        LEFT JOIN reimbur t2 ON t1.r_id = t2.id
+        WHERE t1.user_id = ? AND t2.status = 2
+    `;
+    const replacements = [userid];
+    if (applyTime) {
+        countSql += " AND t2.createtime BETWEEN ? AND ? ";
+        dataSql += " AND t2.createtime BETWEEN ? AND ? ";
+        replacements.push(dayjs(applyTime[0], "YYYY-MM-DD").unix());
+        replacements.push(dayjs(applyTime[1], "YYYY-MM-DD").unix());
+    }
+    const countData = await sequelize.query(countSql, {
+        replacements,
+        type: QueryTypes.SELECT,
+        plain: true,
+    });
+
+    dataSql += " LIMIT ?, ? ";
+    replacements.push(Math.floor((page - 1) * size));
+    replacements.push(Number(size));
+    const rows = await sequelize.query(dataSql, {
+        replacements,
+        type: QueryTypes.SELECT,
+    });
+    return {
+        count: countData.count,
+        rows,
+    };
+};
+
+/**
  * 查询待我审批个数
  */
 export const queryMyShenpiCount = async (userid) => {

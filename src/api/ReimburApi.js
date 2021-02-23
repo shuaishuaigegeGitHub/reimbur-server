@@ -33,8 +33,19 @@ router.post("/query-application", async (ctx) => {
 router.post("/query-approve", async (ctx) => {
     const params = ctx.request.body;
     params.userid = ctx.state.uid;
-    // params.userid = 159;
+    // params.userid = 152;
     const data = await ReimburService.queryApprove(params);
+    ctx.renderJson({ msg: "查询成功", data });
+});
+
+/**
+ * 查询抄送给我
+ */
+router.post("/query-my-copy", async (ctx) => {
+    const params = ctx.request.body;
+    params.userid = ctx.state.uid;
+    // params.userid = 152;
+    const data = await ReimburService.queryCopyToMe(params);
     ctx.renderJson({ msg: "查询成功", data });
 });
 
