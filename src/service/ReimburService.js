@@ -1209,6 +1209,24 @@ async function onlineTransfer(params) {
 }
 
 /**
+ * 保存科目
+ */
+export const saveReceipt = async (params) => {
+    for (let item of params) {
+        await models.reimbur_detail.update(
+            {
+                receipt_number: item.receipt_number,
+            },
+            {
+                where: {
+                    id: item.id,
+                },
+            }
+        );
+    }
+};
+
+/**
  * 查询基本信息
  */
 export const queryBaseData = async ({ userid }) => {
@@ -1506,14 +1524,19 @@ async function ss() {
     const allData = await models.workflow_instance.findAll({ raw: true });
     const define = await getReimburDefine();
     for (let item of allData) {
-        // break;
-        // if (item.id <= 17) {
-        //     continue;
+        if (item.id < 28) {
+            continue;
+        }
+        // if (item.id > 25) {
+        //     break;
         // }
         item.flow_params = JSON.parse(item.flow_params);
         await process(item, define);
+        // break;
     }
 }
+
+// ss();
 
 /**
  * 报销处理
@@ -1552,10 +1575,6 @@ async function process(instance, define) {
         };
         reimbur = await models.reimbur.create(reimbur, { transaction });
         const detailList = instance.flow_params.detailList.map((item) => {
-            let receipt_number = "";
-            if (item.receipt_number) {
-                receipt_number = item.receipt_number.replace(/，/g, ",");
-            }
             return {
                 r_id: reimbur.id,
                 pd_id: item.id || "",
@@ -1565,7 +1584,7 @@ async function process(instance, define) {
                 unit: item.unit,
                 subject_id: item.subject_id,
                 remark: item.remark,
-                receipt_number: receipt_number,
+                receipt_number: item.receipt_number,
             };
         });
         await models.reimbur_detail.bulkCreate(detailList, { transaction });
@@ -1606,6 +1625,27 @@ async function process(instance, define) {
                 transaction,
             }
         );
+
+        const copyData = await models.workflow_copy.findOne({
+            where: {
+                id: instance.id,
+            },
+            raw: true,
+        });
+        if (copyData) {
+            let temp = JSON.parse(copyData.copys);
+            if (temp && temp.length) {
+                const arr = temp.map((item) => {
+                    return {
+                        r_id: reimbur.id,
+                        user_id: item.id,
+                        user_name: item.user_name,
+                        avatar: item.avatar,
+                    };
+                });
+                await models.reimbur_copy.bulkCreate(arr, { transaction });
+            }
+        }
 
         await transaction.commit();
     } catch (error) {
