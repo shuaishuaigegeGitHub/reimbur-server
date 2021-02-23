@@ -863,6 +863,7 @@ export const agree = async (params) => {
         } else {
             // 报销流程结束了
             updateData.status = 2;
+            updateData.stage = "end";
         }
         // 更新报销数据
         await models.reimbur.update(updateData, {
@@ -1064,7 +1065,36 @@ export const saveSubject = async (params) => {
  * 出纳打款
  */
 export const transfer = async (params) => {
-    const { task_id, remark, userid, username, updatetime } = params;
+    const { bank_account } = params;
+    const companyBank = await models.company_bank.findOne({
+        where: {
+            bank_account,
+        },
+    });
+    if (!companyBank) {
+        throw new GlobalError(500, `找不到打款账户【${bank_account}】`);
+    }
+    if (companyBank.online_pay) {
+        // 线上打款
+        await onlineTransfer(params);
+    } else {
+        // 线下打款，表示直接结束
+        await agree(params);
+    }
+};
+
+/**
+ * 线上打款，请求财务系统打款，等待银行账单拉取后自动完成报销
+ */
+async function onlineTransfer(params) {
+    const {
+        task_id,
+        remark,
+        userid,
+        username,
+        updatetime,
+        bank_account,
+    } = params;
     const transaction = await sequelize.transaction();
     try {
         const now = dayjs();
@@ -1112,6 +1142,7 @@ export const transfer = async (params) => {
         // 更新reimbur时间
         await models.reimbur.update(
             {
+                pay_bank_account: bank_account,
                 update_by: username,
                 updatetime: now.unix(),
             },
@@ -1138,8 +1169,8 @@ export const transfer = async (params) => {
         );
         // 支付操作需要对接到财务系统
         let res = await SystemService.transaction({
-            // NOTE: 目前参数没用，后面会有用的。打款账户（公司打钱的银行账户ID）
-            payId: 1,
+            // 打款账户（公司打钱的银行账户）
+            payAccount: bank_account,
             // 收方银行卡号
             toAccount: reimbur.bank_account,
             // 收方户名
@@ -1175,7 +1206,7 @@ export const transfer = async (params) => {
         await transaction.rollback();
         throw new GlobalError(500, error.message);
     }
-};
+}
 
 /**
  * 查询基本信息

@@ -44,6 +44,9 @@ async function getAccessToken() {
  * 发送工作通知
  */
 export const sendMsg = async (userid, msg) => {
+    if (!userid) {
+        return;
+    }
     let access_token = await getAccessToken();
     const data = await axios({
         url:

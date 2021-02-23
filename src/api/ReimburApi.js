@@ -33,7 +33,6 @@ router.post("/query-application", async (ctx) => {
 router.post("/query-approve", async (ctx) => {
     const params = ctx.request.body;
     params.userid = ctx.state.uid;
-    // params.userid = 152;
     const data = await ReimburService.queryApprove(params);
     ctx.renderJson({ msg: "查询成功", data });
 });
@@ -44,7 +43,6 @@ router.post("/query-approve", async (ctx) => {
 router.post("/query-my-copy", async (ctx) => {
     const params = ctx.request.body;
     params.userid = ctx.state.uid;
-    // params.userid = 152;
     const data = await ReimburService.queryCopyToMe(params);
     ctx.renderJson({ msg: "查询成功", data });
 });
@@ -115,8 +113,6 @@ router.post("/agree", async (ctx) => {
     const params = ctx.request.body;
     params.userid = ctx.state.uid;
     params.username = ctx.state.userName;
-    // params.userid = 159;
-    // params.username = "温佳颖";
     const data = await ReimburService.agree(params);
     ctx.renderJson({ msg: "操作成功", data });
 });
@@ -128,8 +124,6 @@ router.post("/reject", async (ctx) => {
     const params = ctx.request.body;
     params.userid = ctx.state.uid;
     params.username = ctx.state.userName;
-    // params.userid = 159;
-    // params.username = "温佳颖";
     const data = await ReimburService.reject(params);
     ctx.renderJson({ msg: "操作成功", data });
 });
@@ -159,8 +153,6 @@ router.post("/transfer", async (ctx) => {
     const params = ctx.request.body;
     params.userid = ctx.state.uid;
     params.username = ctx.state.userName;
-    // params.userid = 159;
-    // params.username = "温佳颖";
     await ReimburService.transfer(params);
     ctx.renderJson({ msg: "操作成功" });
 });
@@ -179,6 +171,14 @@ router.get("/base-data", async (ctx) => {
  */
 router.get("/subject-tree", async (ctx) => {
     const data = await SystemService.getSubjectTree(ctx.token);
+    ctx.renderJson({ msg: "查询成功", data });
+});
+
+/**
+ * 获取科目树
+ */
+router.get("/bank-list", async (ctx) => {
+    const data = await SystemService.queryBankList();
     ctx.renderJson({ msg: "查询成功", data });
 });
 

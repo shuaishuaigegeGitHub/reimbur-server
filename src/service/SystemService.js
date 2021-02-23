@@ -1,6 +1,9 @@
+import sequelize from "../model/index";
 import axios from "@/util/axios";
 import dayjs from "dayjs";
 import { sign } from "@/util/crypto";
+
+const { models } = sequelize;
 
 /**
  * 商务系统后端地址
@@ -66,4 +69,15 @@ export const getSubjectTree = async (token) => {
         },
     });
     return res.data;
+};
+
+/**
+ * 查询银行账户列表（这个获取银行列表的应该写在财务系统）
+ */
+export const queryBankList = async () => {
+    const bankList = await models.company_bank.findAll({
+        attributes: ["id", "bank_name", "bank_account", "online_pay"],
+        raw: true,
+    });
+    return bankList;
 };
