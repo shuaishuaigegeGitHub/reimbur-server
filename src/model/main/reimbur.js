@@ -83,14 +83,6 @@ export default (sequelize) => {
                 type: Sequelize.STRING(255),
                 comment: "报销事由",
             },
-            copys: {
-                type: Sequelize.STRING,
-                comment: "抄送人信息",
-            },
-            copy_ids: {
-                type: Sequelize.STRING(255),
-                comment: "抄送人ID",
-            },
             create_id: {
                 type: Sequelize.INTEGER,
                 comment: "创建者ID",

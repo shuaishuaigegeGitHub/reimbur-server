@@ -71,6 +71,19 @@ export const submit = async (params) => {
         // 报销数据保存
         let reimburData = await models.reimbur.create(params, { transaction });
 
+        // 抄送人数据
+        const copysData = params.copys.map((item) => {
+            return {
+                r_id: reimburData.id,
+                user_id: item.id,
+                user_name: item.user_name,
+                avatar: item.avatar,
+            };
+        });
+        if (copysData.length) {
+            await models.reimbur_copy.bulkCreate(copysData, { transaction });
+        }
+
         // 明细记录
         detailList.forEach((item) => {
             item.r_id = reimburData.id;
@@ -375,6 +388,12 @@ export const queryDetailAndProcess = async (id) => {
         },
         raw: true,
     });
+    const copys = await models.reimbur_copy.findAll({
+        where: {
+            r_id: id,
+        },
+        raw: true,
+    });
     let lastTask = await models.reimbur_task.findOne({
         where: {
             r_id: id,
@@ -401,6 +420,7 @@ export const queryDetailAndProcess = async (id) => {
     return {
         detailList,
         processList,
+        copys,
     };
 };
 
@@ -455,6 +475,19 @@ export const queryEditable = async (params) => {
     });
     reimbur.detailList = detailList;
     delete reimbur.flow_define;
+    const copys = await models.reimbur_copy.findAll({
+        where: {
+            r_id: params.id,
+        },
+        raw: true,
+    });
+    reimbur.copys = copys.map((item) => {
+        return {
+            id: item.user_id,
+            user_name: item.user_name,
+            avatar: item.avatar,
+        };
+    });
     return reimbur;
 };
 
@@ -496,13 +529,6 @@ export const edit = async (params) => {
             item.r_id = params.id;
             return item;
         });
-        // 先删除原本发票号
-        await models.reimbur_receipt.destroy({
-            where: {
-                w_id: params.id,
-            },
-            transaction,
-        });
 
         // 更新报销信息
         await models.reimbur.update(reimburData, {
@@ -521,6 +547,27 @@ export const edit = async (params) => {
         });
         // 保存新的明细信息
         await models.reimbur_detail.bulkCreate(detailList, { transaction });
+
+        // 清空原本抄送人，保存新抄送人
+        const copysData = params.copys.map((item) => {
+            return {
+                r_id: params.id,
+                user_id: item.id,
+                user_name: item.user_name,
+                avatar: item.avatar,
+            };
+        });
+        await models.reimbur_copy.destroy(
+            {
+                where: {
+                    r_id: params.id,
+                },
+            },
+            { transaction }
+        );
+        if (copysData.length) {
+            await models.reimbur_copy.bulkCreate(copysData, { transaction });
+        }
 
         // 记录流程操作信息
         await models.reimbur_process.create(
@@ -932,24 +979,6 @@ export const saveSubject = async (params) => {
         await models.reimbur_detail.update(
             {
                 subject_id: item.subject_id,
-            },
-            {
-                where: {
-                    id: item.id,
-                },
-            }
-        );
-    }
-};
-
-/**
- * 保存科目
- */
-export const saveReceipt = async (params) => {
-    for (let item of params) {
-        await models.reimbur_detail.update(
-            {
-                receipt_number: item.receipt_number,
             },
             {
                 where: {
@@ -1420,14 +1449,10 @@ async function process(instance, define) {
             update_by: instance.update_by,
         };
         reimbur = await models.reimbur.create(reimbur, { transaction });
-        // 发票号
-        let receiptList = [];
         const detailList = instance.flow_params.detailList.map((item) => {
             let receipt_number = "";
             if (item.receipt_number) {
                 receipt_number = item.receipt_number.replace(/，/g, ",");
-                let arr = receipt_number.split(",");
-                receiptList = receiptList.concat(arr);
             }
             return {
                 r_id: reimbur.id,
@@ -1442,14 +1467,6 @@ async function process(instance, define) {
             };
         });
         await models.reimbur_detail.bulkCreate(detailList, { transaction });
-
-        receiptList = receiptList.map((item) => {
-            return {
-                w_id: reimbur.id,
-                receipt_number: item,
-            };
-        });
-        await models.reimbur_receipt.bulkCreate(receiptList, { transaction });
 
         const allTaskList = await models.workflow_task.findAll({
             where: {

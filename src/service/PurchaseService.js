@@ -927,6 +927,7 @@ export const queryInstanceToReimbur = async (id, applicant) => {
             bank_address: "",
             payee: "",
             detailList: detail,
+            copys: [],
         };
     }
     return result;
