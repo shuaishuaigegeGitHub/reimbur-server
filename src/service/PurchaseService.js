@@ -579,6 +579,7 @@ export const queryProcessDetail = async (params) => {
     if (lastTask) {
         // 还有未审批的任务，流程未结束
         purchaseProcessList.push({
+            stage: lastTask.stage,
             username: lastTask.actor_user_name,
             msg: "审批中",
             flag: 2,
