@@ -9,6 +9,8 @@ import "cnchar";
 // 日志注册到 global 上
 global.logger = logger;
 
+// 测试自动部署
+
 export default class Application {
     constructor() {
         this.koa = new Koa();
