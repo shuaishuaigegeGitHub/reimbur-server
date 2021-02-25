@@ -1247,6 +1247,38 @@ export const queryBaseData = async ({ userid }) => {
 };
 
 /**
+ * 更新明细
+ */
+export const updateDetail = async (params) => {
+    const { id, subject_id, receipt_number } = params;
+    if (receipt_number) {
+        // 修改发票号，只能自己修改
+        let number = receipt_number.replace(/，/g, ",");
+        let receipt_number_list = number.split(",");
+        receipt_number_list.forEach((item) => {
+            if (!RECEIPT_NUMBER_REGEX.test(item)) {
+                throw new GlobalError(500, `发票号【${item}】格式不正确`);
+            }
+        });
+        await models.reimbur_detail.update({
+            receipt_number: number
+        }, {
+            where: {
+                id: id
+            }
+        });
+    } else if (subject_id) {
+        await models.reimbur_detail.update({
+            subject_id: subject_id
+        }, {
+            where: {
+                id: id
+            }
+        });
+    }
+};
+
+/**
  * 完成一个报销，需要银行账单到账才可以，给每日定时任务处理报销单使用
  * @param {string} refext 业务号
  */

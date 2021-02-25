@@ -167,6 +167,16 @@ router.get("/base-data", async (ctx) => {
 });
 
 /**
+ * 更新报销明细
+ */
+router.post("/detail/update", async (ctx) => {
+    const params = ctx.request.body;
+    params.userid = ctx.state.uid;
+    await ReimburService.updateDetail(params);
+    ctx.renderJson({ msg: "更新成功" });
+});
+
+/**
  * 获取科目树
  */
 router.get("/subject-tree", async (ctx) => {
@@ -175,7 +185,7 @@ router.get("/subject-tree", async (ctx) => {
 });
 
 /**
- * 获取科目树
+ * 获取银行列表
  */
 router.get("/bank-list", async (ctx) => {
     const data = await SystemService.queryBankList();
