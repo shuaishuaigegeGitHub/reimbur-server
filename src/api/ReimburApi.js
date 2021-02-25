@@ -177,6 +177,14 @@ router.post("/detail/update", async (ctx) => {
 });
 
 /**
+ * 查询关联的采购单
+ */
+router.get("/purchase/:id", async (ctx) => {
+    const data = await ReimburService.queryPurchase(ctx.params.id);
+    ctx.renderJson({ msg: "查询关联的采购单", data });
+});
+
+/**
  * 获取科目树
  */
 router.get("/subject-tree", async (ctx) => {

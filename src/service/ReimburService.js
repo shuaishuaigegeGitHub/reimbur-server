@@ -1260,22 +1260,60 @@ export const updateDetail = async (params) => {
                 throw new GlobalError(500, `发票号【${item}】格式不正确`);
             }
         });
-        await models.reimbur_detail.update({
-            receipt_number: number
-        }, {
-            where: {
-                id: id
+        await models.reimbur_detail.update(
+            {
+                receipt_number: number,
+            },
+            {
+                where: {
+                    id: id,
+                },
             }
-        });
+        );
     } else if (subject_id) {
-        await models.reimbur_detail.update({
-            subject_id: subject_id
-        }, {
-            where: {
-                id: id
+        await models.reimbur_detail.update(
+            {
+                subject_id: subject_id,
+            },
+            {
+                where: {
+                    id: id,
+                },
             }
+        );
+    }
+};
+
+/**
+ * 查询关联的采购单
+ */
+export const queryPurchase = async (purchaseId) => {
+    const purchase = await models.purchase.findByPk(purchaseId, {
+        attributes: [
+            "id",
+            "applicant",
+            "applicant_name",
+            "date",
+            "reasons",
+            "images",
+            "status",
+            "total_money",
+            "remark",
+            "createtime",
+        ],
+        raw: true,
+    });
+    if (purchase) {
+        purchase.images = JSON.parse(purchase.images) || [];
+        purchase.detailList = await models.purchase_detail.findAll({
+            where: {
+                p_id: purchaseId,
+            },
+            order: [["index", "ASC"]],
+            raw: true,
         });
     }
+    return purchase;
 };
 
 /**
