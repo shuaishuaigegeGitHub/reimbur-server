@@ -1,9 +1,12 @@
-import { WORKFLOW_TASK_STATUS_START } from "../workflow/WorkflowConstant";
 import sequelize from "../model/index";
 import GlobalError from "@/common/GlobalError";
 import dayjs from "dayjs";
 import { sign, deSign } from "@/util/crypto";
-import { startBaoXiaoProcess, completeBaoXiaoProcess, finishTask } from "../service/ReimburService";
+import {
+    startBaoXiaoProcess,
+    completeBaoXiaoProcess,
+    finishTask,
+} from "../service/ReimburService";
 import NP from "number-precision";
 import axios from "@/util/axios";
 
@@ -19,7 +22,7 @@ function checkParams(signStr) {
     let requestTime = body.time;
     if (requestTime > now + 10 || requestTime < now - 10) {
         // 如果请求时间不在当前时间10秒左右则丢弃该请求
-        throw new Error("请求时间不正常");
+        throw new Error("请求时间异常");
     }
     return body;
 }
@@ -59,7 +62,13 @@ export const paymentBaoXiaoGenerate = async (signStr = "") => {
     const SUBJECT_ID = "20010102";
 
     for (let payment of body.paymentOrder) {
-        let remark = payment.start_date + " ~ " + payment.end_date + " " + payment.company_name + "【买量】";
+        let remark =
+            payment.start_date +
+            " ~ " +
+            payment.end_date +
+            " " +
+            payment.company_name +
+            "【买量】";
 
         detailList.push({
             money: payment.receivable,
@@ -83,7 +92,10 @@ export const paymentBaoXiaoGenerate = async (signStr = "") => {
     }
 
     // 去OA查找用户数据
-    let [user, approveUser] = await findUserById([{ user_id: userId }, { user_name: approveUserName }]);
+    let [user, approveUser] = await findUserById([
+        { user_id: userId },
+        { user_name: approveUserName },
+    ]);
 
     // 因为OA返回的奇葩数据，所以要这么写。建议OA开发人员剁屌。
     user = user.data[0];
@@ -127,13 +139,15 @@ export const paymentBaoXiaoGenerate = async (signStr = "") => {
     };
 
     // 开启一个报销流程
-    let workflowInstance = await startBaoXiaoProcess(flowParams, user.user_name);
+    let workflowInstance = await startBaoXiaoProcess(
+        flowParams,
+        user.user_name
+    );
 
     // 直接完成下一流程（上级审批流程）
     let task = await models.workflow_task.findOne({
         where: {
             wi_id: workflowInstance.id,
-            status: WORKFLOW_TASK_STATUS_START,
         },
         raw: true,
     });
@@ -158,7 +172,9 @@ function findUserById(userList) {
     userList.forEach((user) => {
         let token = sign(user);
         let temp = axios({
-            url: process.env.OA_SYSTEM_BASE_URL + "/admin/system_out/getUserById",
+            url:
+                process.env.OA_SYSTEM_BASE_URL +
+                "/admin/system_out/getUserById",
             method: "POST",
             headers: {
                 systemtoken: token,
