@@ -169,4 +169,14 @@ router.post("/detail-list", async (ctx) => {
     ctx.renderJson({ msg: "查询成功", data });
 });
 
+/**
+ * 删除采购申请
+ */
+router.post("/delete", async (ctx) => {
+    const params = ctx.request.body || {};
+    params.user_id = ctx.state.uid;
+    await PurchaseService.deletePurchase(params);
+    ctx.renderJson({ msg: "操作成功" });
+});
+
 export default router;

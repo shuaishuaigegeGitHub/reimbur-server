@@ -1127,3 +1127,58 @@ export const queryDetailList = async (params) => {
     });
     return data;
 };
+
+/**
+ * 删除采购申请
+ */
+export const deletePurchase = async (params) => {
+    const { id, user_id } = params;
+    const transaction = await sequelize.transaction();
+    try {
+        const exists = await models.purchase.count({
+            where: {
+                id,
+                applicant: user_id,
+                status: 3,
+            },
+            transaction,
+        });
+        if (exists <= 0) {
+            throw new Error("找不到可删除的采购申请");
+        }
+
+        await models.purchase.destroy({
+            where: {
+                id,
+                applicant: user_id,
+                status: 3,
+            },
+            transaction,
+        });
+
+        await models.purchase_detail.destroy({
+            where: {
+                p_id: id,
+            },
+            transaction,
+        });
+
+        await models.purchase_task.destroy({
+            where: {
+                p_id: id,
+            },
+            transaction,
+        });
+
+        await models.purchase_process.destroy({
+            where: {
+                p_id: id,
+            },
+            transaction,
+        });
+        await transaction.commit();
+    } catch (error) {
+        await transaction.rollback();
+        throw new GlobalError(500, error.message);
+    }
+};
