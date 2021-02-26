@@ -18,6 +18,18 @@ export default (sequelize) => {
                 type: Sequelize.STRING(36),
                 comment: "采购明细ID",
             },
+            payment_id: {
+                type: Sequelize.INTEGER,
+                comment: "买量账单ID（买量才有用）",
+            },
+            start_date: {
+                type: Sequelize.STRING(10),
+                comment: "开始日期（买量才有用）",
+            },
+            end_date: {
+                type: Sequelize.STRING(10),
+                comment: "结束日期（买量才有用）",
+            },
             name: {
                 type: Sequelize.STRING(100),
                 comment: "物品名称",

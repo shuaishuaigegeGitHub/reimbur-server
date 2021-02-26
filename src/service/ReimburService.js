@@ -15,10 +15,7 @@ const RECEIPT_NUMBER_REGEX = /[A-Z0-9]{6,8}/;
 // 最大报销金额
 const MAX_MONEY = 99999999;
 
-/**
- * 获取报销流程定义
- */
-async function getReimburDefine() {
+export const getReimburDefine = async () => {
     const workflow = await models.workflow.findOne({
         where: {
             flow_key: "REIMBUR",
@@ -26,7 +23,7 @@ async function getReimburDefine() {
         raw: true,
     });
     return JSON.parse(workflow.flow_define);
-}
+};
 
 /**
  * 提交报销申请
@@ -1400,6 +1397,7 @@ async function bankBillWriteOff(refext, reimbur, now) {
         where: {
             r_id: reimbur.id,
         },
+        raw: true,
     });
     // 报销的内容
     if (reimbur.payment) {

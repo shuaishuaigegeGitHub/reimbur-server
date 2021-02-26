@@ -2,11 +2,7 @@ import sequelize from "../model/index";
 import GlobalError from "@/common/GlobalError";
 import dayjs from "dayjs";
 import { sign, deSign } from "@/util/crypto";
-import {
-    startBaoXiaoProcess,
-    completeBaoXiaoProcess,
-    finishTask,
-} from "../service/ReimburService";
+import { finishTask, getReimburDefine, agree } from "../service/ReimburService";
 import NP from "number-precision";
 import axios from "@/util/axios";
 
@@ -38,12 +34,7 @@ export const paymentBaoXiaoGenerate = async (signStr = "") => {
     let approveUserName = body.approveUserName;
     // 买量数据
     let paymentOrder = body.paymentOrder;
-    // 发票号
-    let receiptNumber = body.receiptNumber;
 
-    if (!receiptNumber) {
-        throw new GlobalError(510, "缺少发票号");
-    }
     if (!paymentOrder) {
         throw new GlobalError(510, "缺少买量数据");
     }
@@ -54,7 +45,7 @@ export const paymentBaoXiaoGenerate = async (signStr = "") => {
         throw new GlobalError(510, "缺少上级用户名");
     }
 
-    const now = dayjs().format("YYYY-MM-DD");
+    const now = dayjs();
 
     let detailList = [];
     let total_money = 0;
@@ -83,7 +74,7 @@ export const paymentBaoXiaoGenerate = async (signStr = "") => {
             end_date: payment.end_date,
         });
         // 计算总报销金额
-        total_money = NP.plus(total_money, payment.receivable);
+        total_money = NP.round(NP.plus(total_money, payment.receivable), 2);
     }
 
     if (!detailList.length) {
@@ -107,60 +98,79 @@ export const paymentBaoXiaoGenerate = async (signStr = "") => {
     if (!approveUser) {
         throw new GlobalError(510, `找不到用户数据[${approveUserName}]`);
     }
-    // 获取用户部门链表
-    let userDept = user.dept_parent + "," + user.dept_name;
-    userDept = userDept.split(",").slice(1).join("-");
+
+    const reimburDefine = await getReimburDefine();
+
+    // 第一个审批操作是自己选上级进行操作
+    reimburDefine[0].approveUser = approveUser.user_id;
+    reimburDefine[0].approveUserName = approveUser.user_name;
 
     // 报销流程参数
-    const flowParams = {
-        a_user_id: user.user_id,
-        a_user_name: user.user_name,
-        a_dept_id: user.dept_id,
-        a_dept_name: user.dept_name,
-        a_date: now,
-        b_user_id: user.user_id,
-        b_user_name: user.user_name,
-        b_dept_id: user.dept_id,
-        b_dept_name: user.dept_name,
-        b_date: now,
-        apply_type: "预付请款",
-        pay_type: "银行转账",
-        approve_user: approveUser.user_id,
-        approve_user_name: approveUser.user_name,
-        receipt_number: receiptNumber,
+    const reimburData = {
+        applicant: user.user_id,
+        applicant_name: user.user_name,
+        applicant_dept: user.dept_id,
+        applicant_dept_name: user.dept_name,
+        date: now.format("YYYY-MM-DD"),
+        create_id: user.user_id,
+        create_by: user.user_name,
+        create_dept_id: user.dept_id,
+        create_dept_name: user.dept_name,
+        apply_type: 2, // 预付请款
+        pay_type: 1, // 银行转账
+        reason: "买量预付请款",
+        stage: reimburDefine[0].stage,
         payee: body.paymentOrder[0].company_name.replace(" ", ""),
         bank_name: body.paymentOrder[0].b_bank_deposit.replace(" ", ""),
         bank_account: body.paymentOrder[0].b_bank_number.replace(" ", ""),
         bank_address: body.paymentOrder[0].b_bank_address.replace(" ", ""),
         total_money: total_money,
         // 是否是买量报销
-        payment: true,
-        detailList: detailList,
+        payment: 1,
+        update_by: user.user_name,
+        updatetime: now.unix(),
+        createtime: now.unix(),
     };
 
-    // 开启一个报销流程
-    let workflowInstance = await startBaoXiaoProcess(
-        flowParams,
-        user.user_name
-    );
-
-    // 直接完成下一流程（上级审批流程）
-    let task = await models.workflow_task.findOne({
-        where: {
-            wi_id: workflowInstance.id,
-        },
-        raw: true,
-    });
-
-    let params = {
-        id: task.id,
-        user_id: approveUser.user_id,
-        user_name: approveUser.user_name,
-        updatetime: task.updatetime,
-        remark: "同意",
-    };
-
-    await completeBaoXiaoProcess(params);
+    let task = null;
+    const transaction = await sequelize.transaction();
+    try {
+        const reimbur = await models.reimbur.create(reimburData, {
+            transaction,
+        });
+        detailList.forEach((item) => {
+            item.r_id = reimbur.id;
+        });
+        // 明细保存
+        await models.reimbur_detail.bulkCreate(detailList, { transaction });
+        // 创建审批任务
+        task = await models.reimbur_task.create(
+            {
+                r_id: reimbur.id,
+                stage: reimbur.stage,
+                act_user_id: approveUser.user_id,
+                act_user_name: approveUser.user_name,
+                createtime: now.unix(),
+                updatetime: now.unix(),
+            },
+            { transaction }
+        );
+        await transaction.commit();
+    } catch (error) {
+        await transaction.rollback();
+        global.logger.error("买量报销申请异常：%s", error.stack);
+        throw new GlobalError(500, error.message);
+    }
+    // 直接完成部门领导审批
+    if (task) {
+        agree({
+            task_id: task.id,
+            remark: "",
+            userid: approveUser.user_id,
+            username: approveUser.user_name,
+            updatetime: now.unix(),
+        });
+    }
 };
 
 /**

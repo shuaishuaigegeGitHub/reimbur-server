@@ -79,6 +79,10 @@ export default (sequelize) => {
                 comment:
                     "招商银行业务参考号。存在该业务参考号表示已经转账了（但不一定到账）",
             },
+            payment: {
+                type: Sequelize.TINYINT(4),
+                comment: "买量（1：买量，0：非买量）",
+            },
             pay_bank_account: {
                 type: Sequelize.STRING(100),
                 comment: "打款银行账户（付款的卡号）",
