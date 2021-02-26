@@ -6,6 +6,7 @@ import * as PermissionService from "@/service/PermissionService";
 import * as DingtalkService from "@/service/DingtalkService";
 import NP from "number-precision";
 import * as SystemService from "./SystemService";
+import { v4 as uuidv4 } from "uuid";
 
 const { models } = sequelize;
 
@@ -1401,80 +1402,79 @@ async function bankBillWriteOff(refext, reimbur, now) {
     });
     // 报销的内容
     if (reimbur.payment) {
-        // ! 买量报销处理
-        // // 是否买量，买量需要特殊处理
-        // const PAYMENT_SUBJECT_ID = "20010102";
-        // let settleId = uuidv4();
-        // let settleList = [];
-        // settleList.push({
-        //     settle_id: settleId,
-        //     day: bankBill.day,
-        //     bank_bill_id: bankBill.id,
-        //     our_account_name: bankBill.account_name,
-        //     our_account: bankBill.account,
-        //     other_account_name: bankBill.other_account_name,
-        //     other_account: bankBill.other_account,
-        //     type: 0,
-        //     trsamt: bankBill.debit_money,
-        //     summary: bankBill.summary,
-        //     remark: bankBill.remark,
-        //     subject_id: PAYMENT_SUBJECT_ID,
-        //     createtime: now,
-        // });
-        // // 报销明细
-        // for (let detail of detailList) {
-        //     settleList.push({
-        //         settle_id: settleId,
-        //         day: detail.start_date + " ~ " + detail.end_date,
-        //         order_id: detail.payment_id,
-        //         our_account_name: process.env.CBC_BANK_EACNAM,
-        //         our_account: process.env.CBC_BANK_EACNBR,
-        //         other_account_name: reimbur.payee,
-        //         other_account: reimbur.bank_account,
-        //         type: 2,
-        //         money: detail.money,
-        //         subject_id: detail.subject_id,
-        //         summary: detail.name,
-        //         remark: detail.remark,
-        //         createtime: now,
-        //     });
-        // }
-        // const transaction = await sequelize.transaction();
-        // try {
-        //     let res = await models.bank_bill.update(
-        //         {
-        //             status: 2,
-        //         },
-        //         {
-        //             where: {
-        //                 id: bankBill.id,
-        //                 status: 1,
-        //             },
-        //             transaction,
-        //         }
-        //     );
-        //     if (!res) {
-        //         throw new Error("修改招商银行账单状态失败");
-        //     }
-        //     for (let settle of settleList) {
-        //         await models.bank_settle.create(settle, { transaction });
-        //     }
-        //     // 请求商务系统的结算接口
-        //     let settleParams = detailList.map((item) => {
-        //         return {
-        //             id: item.payment_id,
-        //             type: 2,
-        //         };
-        //     });
-        //     res = await SystemService.settlement(settleParams);
-        //     if (res.code != 1000) {
-        //         throw new Error("商务结算失败");
-        //     }
-        //     await transaction.commit();
-        // } catch (err) {
-        //     await transaction.rollback();
-        //     throw new Error(err.message);
-        // }
+        // 买量报销处理
+        const PAYMENT_SUBJECT_ID = "20010102";
+        let settleId = uuidv4();
+        let settleList = [];
+        settleList.push({
+            settle_id: settleId,
+            day: bankBill.day,
+            bank_bill_id: bankBill.id,
+            our_account_name: bankBill.account_name,
+            our_account: bankBill.account,
+            other_account_name: bankBill.other_account_name,
+            other_account: bankBill.other_account,
+            type: 0,
+            trsamt: bankBill.debit_money,
+            summary: bankBill.summary,
+            remark: bankBill.remark,
+            subject_id: PAYMENT_SUBJECT_ID,
+            createtime: now,
+        });
+        // 报销明细
+        for (let detail of detailList) {
+            settleList.push({
+                settle_id: settleId,
+                day: detail.start_date + " ~ " + detail.end_date,
+                order_id: detail.payment_id,
+                our_account_name: bankBill.account_name,
+                our_account: bankBill.account,
+                other_account_name: reimbur.payee,
+                other_account: reimbur.bank_account,
+                type: 2,
+                money: detail.money,
+                subject_id: detail.subject_id,
+                summary: detail.name,
+                remark: detail.remark,
+                createtime: now,
+            });
+        }
+        const transaction = await sequelize.transaction();
+        try {
+            let res = await models.bank_bill.update(
+                {
+                    status: 2,
+                },
+                {
+                    where: {
+                        id: bankBill.id,
+                        status: 1,
+                    },
+                    transaction,
+                }
+            );
+            if (!res) {
+                throw new Error("修改招商银行账单状态失败");
+            }
+            for (let settle of settleList) {
+                await models.bank_settle.create(settle, { transaction });
+            }
+            // 请求商务系统的结算接口
+            let settleParams = detailList.map((item) => {
+                return {
+                    id: item.payment_id,
+                    type: 2,
+                };
+            });
+            res = await SystemService.settlement(settleParams);
+            if (res.code != 1000) {
+                throw new Error("商务结算失败");
+            }
+            await transaction.commit();
+        } catch (err) {
+            await transaction.rollback();
+            throw new Error(err.message);
+        }
     } else {
         let list = detailList.map((detail) => {
             return {
