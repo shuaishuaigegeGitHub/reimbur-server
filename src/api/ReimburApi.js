@@ -129,24 +129,6 @@ router.post("/reject", async (ctx) => {
 });
 
 /**
- * 保存科目
- */
-router.post("/save-subject", async (ctx) => {
-    const params = ctx.request.body;
-    await ReimburService.saveSubject(params);
-    ctx.renderJson({ msg: "操作成功" });
-});
-
-/**
- * 保存发票号
- */
-router.post("/save-receipt", async (ctx) => {
-    const params = ctx.request.body;
-    await ReimburService.saveReceipt(params);
-    ctx.renderJson({ msg: "操作成功" });
-});
-
-/**
  * 出纳打款
  */
 router.post("/transfer", async (ctx) => {

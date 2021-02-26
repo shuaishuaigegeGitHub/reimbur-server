@@ -261,6 +261,7 @@ export const queryApplication = async (params) => {
             "reason",
             "status",
             "total_money",
+            "payment",
             "create_by",
             "create_id",
             "createtime",
@@ -314,6 +315,7 @@ export const queryApprove = async (params) => {
             t2.reason,
             t2.status,
             t2.total_money,
+            t2.payment,
             t2.create_by,
             t2.create_id,
             t2.createtime,
@@ -390,6 +392,7 @@ export const queryCopyToMe = async (params) => {
             t2.reason,
             t2.status,
             t2.total_money,
+            t2.payment,
             t2.create_by,
             t2.create_id,
             t2.createtime,
@@ -1042,24 +1045,6 @@ export const reject = async (params) => {
 };
 
 /**
- * 保存科目
- */
-export const saveSubject = async (params) => {
-    for (let item of params) {
-        await models.reimbur_detail.update(
-            {
-                subject_id: item.subject_id,
-            },
-            {
-                where: {
-                    id: item.id,
-                },
-            }
-        );
-    }
-};
-
-/**
  * 出纳打款
  */
 export const transfer = async (params) => {
@@ -1205,24 +1190,6 @@ async function onlineTransfer(params) {
         throw new GlobalError(500, error.message);
     }
 }
-
-/**
- * 保存科目
- */
-export const saveReceipt = async (params) => {
-    for (let item of params) {
-        await models.reimbur_detail.update(
-            {
-                receipt_number: item.receipt_number,
-            },
-            {
-                where: {
-                    id: item.id,
-                },
-            }
-        );
-    }
-};
 
 /**
  * 查询基本信息
