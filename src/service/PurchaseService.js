@@ -1109,3 +1109,21 @@ export const forceRejectPurchase = async (params) => {
         throw new GlobalError(500, "操作失败：" + error.message);
     }
 };
+
+/**
+ * 查询明细列表
+ */
+export const queryDetailList = async (params) => {
+    const { status, size = 20, page = 1 } = params;
+    let where = {};
+    if (Number.isInteger(params.status)) {
+        where.status = status;
+    }
+    const data = await models.purchase_detail.findAndCountAll({
+        where: where,
+        offset: Number((page - 1) * size),
+        limit: size,
+        raw: true,
+    });
+    return data;
+};

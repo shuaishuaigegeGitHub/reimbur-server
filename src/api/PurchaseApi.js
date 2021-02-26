@@ -161,4 +161,12 @@ router.post("/force-reject", async (ctx) => {
     ctx.renderJson({ msg: "操作成功" });
 });
 
+/**
+ * 查询最近一次的抄送人列表
+ */
+router.post("/detail-list", async (ctx) => {
+    const data = await PurchaseService.queryDetailList(ctx.request.body);
+    ctx.renderJson({ msg: "查询成功", data });
+});
+
 export default router;
