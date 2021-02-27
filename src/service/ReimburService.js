@@ -909,6 +909,88 @@ export const agree = async (params) => {
 };
 
 /**
+ * 删除报销
+ */
+export const deleteReimbur = async (params) => {
+    const { id, userid } = params;
+    const transaction = await sequelize.transaction();
+    try {
+        const exists = await models.reimbur.count({
+            where: {
+                id,
+                applicant: userid,
+                status: 3,
+            },
+            transaction,
+        });
+        if (exists <= 0) {
+            throw new Error("找不到可删除的采购申请");
+        }
+
+        await models.reimbur.destroy({
+            where: {
+                id,
+                applicant: userid,
+                status: 3,
+            },
+            transaction,
+        });
+
+        // 查找关联的采购明细
+        const detailList = await models.reimbur_detail.findAll({
+            attributes: ["id", "pd_id"],
+            where: {
+                r_id: id,
+                pd_id: {
+                    [Op.ne]: "",
+                },
+            },
+            transaction,
+            raw: true,
+        });
+        if (detailList.length) {
+            // 修改相关联的采购明细状态为未报销
+            await models.purchase_detail.update(
+                {
+                    status: 0,
+                },
+                {
+                    where: {
+                        id: detailList.map((item) => item.pd_id),
+                    },
+                    transaction,
+                }
+            );
+        }
+
+        await models.reimbur_detail.destroy({
+            where: {
+                r_id: id,
+            },
+            transaction,
+        });
+
+        await models.reimbur_task.destroy({
+            where: {
+                r_id: id,
+            },
+            transaction,
+        });
+
+        await models.reimbur_process.destroy({
+            where: {
+                w_id: id,
+            },
+            transaction,
+        });
+        await transaction.commit();
+    } catch (error) {
+        await transaction.rollback();
+        throw new GlobalError(500, error.message);
+    }
+};
+
+/**
  * 获取(stage节点的)下一个任务节点
  * @param stage 当前节点
  */

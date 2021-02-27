@@ -118,6 +118,16 @@ router.post("/agree", async (ctx) => {
 });
 
 /**
+ * 删除
+ */
+router.post("/delete", async (ctx) => {
+    const params = ctx.request.body;
+    params.userid = ctx.state.uid;
+    const data = await ReimburService.deleteReimbur(params);
+    ctx.renderJson({ msg: "操作成功", data });
+});
+
+/**
  * 同意
  */
 router.post("/reject", async (ctx) => {
