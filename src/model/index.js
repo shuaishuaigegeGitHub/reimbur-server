@@ -28,7 +28,10 @@ export const gameModel = (dbConfig) => {
 };
 
 /* 加载主数据库模型 */
-const mainSequelize = new Sequelize({ ...config.sequelize, logging: logger.sql });
+const mainSequelize = new Sequelize({
+    ...config.sequelize,
+    logging: logger.sql,
+});
 loadJsRecursively("model/main", (initModel) => {
     initModel(mainSequelize);
 });

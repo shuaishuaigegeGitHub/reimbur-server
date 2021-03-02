@@ -343,6 +343,7 @@ export const submit = async (params) => {
                 p_id: temp.id,
                 username: params.applicant_name,
                 userid: params.applicant,
+                flag: 2,
                 msg: "发起采购",
                 time: dayjs.unix(now).format("YYYY-MM-DD HH:mm:ss"),
                 createtime: now,
@@ -433,7 +434,7 @@ export const edit = async (params) => {
                 username: purchase.applicant_name,
                 userid: purchase.applicant,
                 msg: "重新编辑了采购申请",
-                flag: 1,
+                flag: 2,
                 time: dayjs.unix(now).format("YYYY-MM-DD HH:mm:ss"),
                 createtime: now,
             },
@@ -582,14 +583,14 @@ export const queryProcessDetail = async (params) => {
             stage: lastTask.stage,
             username: lastTask.actor_user_name,
             msg: "审批中",
-            flag: 2,
+            flag: 0,
         });
     } else if (purchase.status === 2) {
         // 流程结束
         purchaseProcessList.push({
             username: "",
             msg: "采购流程结束",
-            flag: 1,
+            flag: 2,
         });
     }
 
