@@ -1397,6 +1397,7 @@ export const finishTask = async (refext) => {
         await models.reimbur.update(
             {
                 status: 2,
+                stage: "end",
                 updatetime: now,
             },
             {
